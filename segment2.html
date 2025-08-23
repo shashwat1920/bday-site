@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Chimera - Segment 2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Shared styles from previous segments */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #1a202c; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow: hidden; }
+        .device-container { background-color: #0d1117; border-radius: 2.5rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); width: 100%; max-width: 420px; height: 90vh; max-height: 800px; display: flex; flex-direction: column; overflow: hidden; position: relative; border: 8px solid #2d3748; }
+        .device-screen { flex-grow: 1; background-color: #000; color: #4ade80; padding: 1.5rem; display: flex; flex-direction: column; text-align: center; font-family: 'monospace', 'Courier New', Courier, sans-serif; overflow-y: auto; }
+        .text-green-400 { color: #4ade80; }
+        .text-red-500 { color: #ef4444; }
+        input[type="text"] { background-color: #1f2937; border: 1px solid #4b5563; color: #e5e7eb; padding: 0.75rem 1rem; border-radius: 0.5rem; width: 80%; max-width: 300px; text-align: center; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+        input[type="text"]:focus { outline: none; border-color: #4ade80; box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.5); }
+        button { background-color: #4ade80; color: #1a202c; padding: 0.75rem 2rem; border-radius: 0.5rem; font-weight: bold; cursor: pointer; transition: background-color 0.2s, transform 0.1s; border: none; box-shadow: 4px 4px 6px rgba(0, 0, 0, 0.2); margin-bottom: 1rem; }
+        button:hover { background-color: #22c55e; transform: translateY(-1px); }
+        button:active { transform: translateY(0); }
+        .log-entry { font-size: 0.9rem; text-align: left; margin-bottom: 0.5rem; }
+        .log-entry.red { color: #ef4444; }
+        .log-entry.yellow { color: #facc15; }
+        .audio-player-container { 
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 1rem;
+        }
+        .play-button {
+            background-color: #4ade80;
+            color: #1a202c;
+            padding: 1rem 2rem;
+            border-radius: 9999px; /* Pill shape */
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .play-button:hover {
+            background-color: #22c55e;
+            transform: translateY(-1px);
+        }
+        .play-button:active {
+            transform: translateY(0);
+        }
+        .audio-label {
+            margin-top: 0.5rem;
+            color: #4ade80;
+            font-size: 0.8rem;
+        }
+
+        /* Flex container for buttons */
+        .audio-controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="device-container">
+        <div id="gameScreen" class="device-screen">
+            <h1 id="gameTitle" class="text-2xl font-bold text-green-400 mb-4">Phase 2: Signal Recovery Protocol</h1>
+            <p id="gameHint" class="text-green-400 text-sm mb-6">
+                Isolate the true signal from the static. Translation yields the next code fragment.
+            </p>
+
+            <div id="terminal-output" class="w-full text-left">
+                <p class="log-entry">> Boot sequence stable. Initializing network connection...</p>
+                <p class="log-entry">> Analyzing packet headers... <span class="text-green-400">OK</span></p>
+                <p class="log-entry">> Synchronizing timecode... <span class="text-green-400">OK</span></p>
+                <p class="log-entry">> Incoming audio transmission: status = <span class="text-red-500">CORRUPTED</span></p>
+                <p class="log-entry">> Attempting signal reconstruction...</p>
+                <p class="log-entry yellow"> > Playing waveform data...</p>
+            </div>
+
+            <div id="audio-player-container" class="audio-player-container">
+                <audio id="morseAudio" src="morse_code.wav" preload="auto"></audio>
+                <button id="playButton" class="play-button">Play Transmission</button>
+                <div id="audioControls" class="audio-controls hidden">
+                    <button id="stopButton" class="play-button bg-red-500 hover:bg-red-600 text-white">Stop</button>
+                    <button id="replayButton" class="play-button bg-gray-600 hover:bg-gray-700 text-white">Replay</button>
+                </div>
+                <p id="audioLabel" class="audio-label hidden">Transmission playing...</p>
+            </div>
+            
+            <div id="input-container" class="w-full flex flex-col items-center">
+                <input type="text" id="answerInput" placeholder="Enter the decrypted word here...">
+                <button id="submitAnswer">Submit</button>
+            </div>
+            <p id="feedbackMessage" class="text-red-500 mt-4"></p>
+        </div>
+    </div>
+    
+    <script>
+        let gameProgress = JSON.parse(localStorage.getItem('gameProgress')) || {
+            currentSegment: 2,
+            foundDigits: [9] 
+        };
+        
+        let segment2Phase = 1;
+
+        const morseAudio = document.getElementById('morseAudio');
+        const playButton = document.getElementById('playButton');
+        const stopButton = document.getElementById('stopButton');
+        const replayButton = document.getElementById('replayButton');
+        const audioControls = document.getElementById('audioControls');
+        const audioLabel = document.getElementById('audioLabel');
+        const answerInput = document.getElementById('answerInput');
+        const submitButton = document.getElementById('submitAnswer');
+        const feedbackMessage = document.getElementById('feedbackMessage');
+        const gameHint = document.getElementById('gameHint');
+        const inputContainer = document.getElementById('input-container');
+
+
+        function typeWriterEffect(element, text, delay = 50) {
+            element.innerHTML = '';
+            let i = 0;
+            return new Promise(resolve => {
+                function type() {
+                    if (i < text.length) {
+                        element.innerHTML += text.charAt(i);
+                        i++;
+                        setTimeout(type, delay);
+                    } else {
+                        resolve();
+                    }
+                }
+                type();
+            });
+        }
+        
+        function submitAnswer() {
+            const input = answerInput.value.trim().toUpperCase();
+            
+            if (segment2Phase === 1) {
+                // First puzzle: Decode Morse code
+                if (input === "BOINK") {
+                    feedbackMessage.className = "text-green-400 mt-4";
+                    typeWriterEffect(feedbackMessage, `> Transmission decoded: "BOINK"`).then(() => {
+                        // Move to second puzzle
+                        feedbackMessage.textContent = '';
+                        gameHint.textContent = 'The recovered word contains a numeric fragment.';
+                        document.getElementById('audio-player-container').style.display = 'none';
+                        document.getElementById('terminal-output').innerHTML = `
+                            <div class="log-entry">
+                                > Decoded Word: <span class="text-green-400">BOINK</span>
+                            </div>
+                            <div class="log-entry mt-2">
+                                > Task: Count the number of consonants in the decoded word.
+                            </div>
+                        `;
+                        answerInput.placeholder = "Enter number of consonants...";
+                        answerInput.value = '';
+                        segment2Phase = 2;
+                    });
+                } else {
+                    feedbackMessage.className = "text-red-500 mt-4";
+                    feedbackMessage.innerHTML = `
+                        > Error: Signal mismatch.<br>
+                        > Suggestion: Listen to the transmission carefully.
+                    `;
+                }
+            } else if (segment2Phase === 2) {
+                // Second puzzle: Count consonants
+                const consonants = (input) => {
+                    const letters = input.match(/[A-Z]/g);
+                    if (!letters) return 0;
+                    return letters.filter(char => !"AEIOU".includes(char)).length;
+                };
+
+                const correctCount = consonants("BOINK");
+                const inputNumber = parseInt(input);
+                
+                if (!isNaN(inputNumber) && inputNumber === correctCount) {
+                    feedbackMessage.className = "text-green-400 mt-4";
+                    typeWriterEffect(feedbackMessage, `> Numeric fragment recovered: ${correctCount}. Storing in secure memory slot 2/4...`).then(() => {
+                        gameProgress.foundDigits[1] = correctCount; // Digit is 3
+                        localStorage.setItem('gameProgress', JSON.stringify(gameProgress));
+                        setTimeout(() => {
+                            window.location.href = "segment3.html";
+                        }, 3000);
+                    });
+                } else {
+                    feedbackMessage.className = "text-red-500 mt-4";
+                    feedbackMessage.textContent = `> Error: Incorrect count. Please try again.`;
+                }
+            }
+        }
+        
+        // Event listeners for audio playback
+        playButton.addEventListener('click', () => {
+            morseAudio.play();
+            audioLabel.classList.remove('hidden');
+            playButton.classList.add('hidden');
+            audioControls.classList.remove('hidden');
+        });
+
+        stopButton.addEventListener('click', () => {
+            morseAudio.pause();
+            morseAudio.currentTime = 0; // Rewind audio
+            audioLabel.classList.add('hidden');
+            playButton.classList.remove('hidden');
+            audioControls.classList.add('hidden');
+        });
+
+        replayButton.addEventListener('click', () => {
+            morseAudio.currentTime = 0; // Rewind and play again
+            morseAudio.play();
+            audioLabel.classList.remove('hidden');
+            audioControls.classList.remove('hidden');
+        });
+
+        morseAudio.onended = () => {
+            audioLabel.classList.add('hidden');
+            playButton.classList.add('hidden');
+            audioControls.classList.remove('hidden');
+        };
+
+        window.onload = () => {
+            gameProgress.currentSegment = 2;
+            localStorage.setItem('gameProgress', JSON.stringify(gameProgress));
+            submitButton.onclick = submitAnswer;
+        };
+    </script>
+</body>
+</html>
