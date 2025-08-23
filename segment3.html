@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Chimera - Segment 3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Using a monospace font for thematic consistency */
+        body { 
+            font-family: 'monospace', 'Courier New', Courier, sans-serif; 
+            background-color: #1a202c; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            overflow: hidden; 
+        }
+        .device-container { 
+            background-color: #0d1117; 
+            border-radius: 2.5rem; 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); 
+            width: 100%; 
+            max-width: 420px; 
+            height: 90vh; 
+            max-height: 800px; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+            position: relative; 
+            border: 8px solid #2d3748; 
+        }
+        .device-screen { 
+            flex-grow: 1; 
+            background-color: #000; 
+            color: #4ade80; 
+            padding: 1.5rem; 
+            display: flex; 
+            flex-direction: column; 
+            text-align: center; 
+            overflow: hidden; /* Main screen doesn't scroll, content inside does */
+        }
+        .text-green-400 { color: #4ade80; }
+        .text-red-500 { color: #ef4444; }
+        .text-yellow-400 { color: #facc15; }
+        input[type="text"] { 
+            background-color: #1f2937; 
+            border: 1px solid #4b5563; 
+            color: #e5e7eb; 
+            padding: 0.75rem 1rem; 
+            border-radius: 0.5rem; 
+            width: 80%; 
+            max-width: 300px; 
+            text-align: center; 
+            margin-top: 1rem; 
+            margin-bottom: 0.75rem; 
+        }
+        input[type="text"]:focus { 
+            outline: none; 
+            border-color: #4ade80; 
+            box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.5); 
+        }
+        button { 
+            background-color: #4ade80; 
+            color: #1a202c; 
+            padding: 0.75rem 2rem; 
+            border-radius: 0.5rem; 
+            font-weight: bold; 
+            cursor: pointer; 
+            transition: background-color 0.2s, transform 0.1s; 
+            border: none; 
+            box-shadow: 4px 4px 6px rgba(0, 0, 0, 0.2); 
+        }
+        button:hover { 
+            background-color: #22c55e; 
+            transform: translateY(-1px); 
+        }
+        /* --- SCROLLABILITY & LAYOUT FIX --- */
+        .content-area {
+            flex-grow: 1;
+            overflow-y: auto; /* This area scrolls */
+            transition: opacity 0.3s ease-in-out;
+        }
+        .file-item {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 0.5rem 0.25rem;
+            background-color: transparent;
+            color: #4ade80;
+            border: none;
+            cursor: pointer;
+        }
+        .file-item:hover {
+            background-color: rgba(74, 222, 128, 0.1);
+        }
+        .file-content-view { 
+            white-space: pre-wrap; 
+            word-wrap: break-word; 
+            font-size: 0.9rem; 
+            text-align: left; 
+            background-color: #111827;
+            padding: 1rem;
+            border-radius: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="device-container">
+        <div id="gameScreen" class="device-screen">
+            <h1 id="gameTitle" class="text-2xl font-bold text-green-400 mb-2">Phase 3: Filesystem Recon</h1>
+            <p id="pathDisplay" class="text-sm mb-4 text-left"></p>
+            
+            <div id="contentArea" class="content-area">
+                <!-- File explorer or viewer content is injected here -->
+            </div>
+
+            <div class="mt-auto pt-4 border-t border-gray-700">
+                <input type="text" id="answerInput" placeholder="Enter the key fragment...">
+                <button id="submitAnswer">Submit</button>
+                <p id="feedbackMessage" class="text-red-500 mt-2 h-4"></p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // --- GAME STATE MANAGEMENT ---
+        let gameProgress = JSON.parse(localStorage.getItem('gameProgress')) || { currentSegment: 3, foundDigits: [9, 3] };
+        let currentDirectory = '/';
+
+        // --- DOM ELEMENT REFERENCES ---
+        const pathDisplay = document.getElementById('pathDisplay');
+        const contentArea = document.getElementById('contentArea');
+        const answerInput = document.getElementById('answerInput');
+        const submitButton = document.getElementById('submitAnswer');
+        const feedbackMessage = document.getElementById('feedbackMessage');
+        
+        // --- FILESYSTEM DATA (WITH FILLER FILES) ---
+        const filesystem = {
+            '/': ['home', 'var', 'etc'],
+            '/home': ['agent', 'guest'],
+            '/home/agent': ['readme.txt', 'log_alpha.txt', 'notes.bak', 'journal.txt', 'personal_archive.zip'],
+            '/home/guest': ['photos', 'documents'],
+            '/var': ['logs'],
+            '/var/logs': ['system.log', 'net.log', 'security.log', 'error.log'],
+            '/etc': ['config.sys', 'network.conf']
+        };
+        const contentMap = {
+            '/home/agent/log_alpha.txt': '...\\nSESSION_ID: 8ac4f52\\nKEY_FRAGMENT: 7\\nTransmission route complete.',
+            '/home/agent/readme.txt': 'Welcome, agent. This directory contains your local mission files. Proceed with caution.',
+            '/home/agent/notes.bak': 'Backup of personal notes. Data fragmented.',
+            '/home/agent/journal.txt': 'Project Chimera progress: The core module is offline, but the network layer is stable.',
+            '/home/agent/personal_archive.zip': 'File is password protected. Cannot open.',
+            '/home/guest/photos': 'Binary data. Corrupted images.',
+            '/home/guest/documents': 'Access denied. Encryption level too high.',
+            '/var/logs/system.log': 'System initiated. No critical errors detected.',
+            '/var/logs/net.log': 'Network traffic stable. No anomalies.',
+            '/var/logs/security.log': 'Security scan complete. No threats found.',
+            '/var/logs/error.log': 'No errors reported in the last 24 hours.',
+            '/etc/config.sys': 'System configuration. Do not modify.',
+            '/etc/network.conf': 'Network settings. DHCP enabled.'
+        };
+
+        // --- UTILITY FUNCTIONS ---
+        function typeWriterEffect(element, text, delay = 50) {
+            element.innerHTML = '';
+            let i = 0;
+            return new Promise(resolve => {
+                function type() {
+                    if (i < text.length) {
+                        element.innerHTML += text.charAt(i);
+                        i++;
+                        setTimeout(type, delay);
+                    } else {
+                        resolve();
+                    }
+                }
+                type();
+            });
+        }
+
+        // --- UI RENDERING FUNCTIONS ---
+        function renderFileBrowser() {
+            contentArea.style.opacity = '0';
+            setTimeout(() => {
+                pathDisplay.textContent = `Current Directory: ${currentDirectory}`;
+                let html = '';
+                
+                // Add back button if not in root
+                if (currentDirectory !== '/') {
+                    const parentPath = currentDirectory.split('/').filter(p => p).slice(0, -1).join('/');
+                    const backPath = `/${parentPath}`;
+                    html += `<button class="file-item" onclick="navigate('${backPath}')">../</button>`;
+                }
+                
+                const contents = filesystem[currentDirectory.replace(/\/$/, '') || '/'];
+                if (contents) {
+                    contents.forEach(item => {
+                        const isFolder = !item.includes('.');
+                        const icon = isFolder ? '📁' : '📄';
+                        const path = `${currentDirectory}${item}`;
+                        const action = isFolder ? `navigate('${path}/')` : `viewFile('${path}')`;
+                        html += `<button class="file-item" onclick="${action}">${icon} ${item}</button>`;
+                    });
+                }
+                contentArea.innerHTML = html;
+                contentArea.style.opacity = '1';
+            }, 300);
+        }
+        
+        function viewFile(filePath) {
+            contentArea.style.opacity = '0';
+            setTimeout(() => {
+                const content = contentMap[filePath] || 'Access denied. Unauthorized file.';
+                contentArea.innerHTML = `
+                    <div class="file-content-view">${content}</div>
+                    <button class="file-item mt-4" onclick="renderFileBrowser()">[ Close File ]</button>
+                `;
+                contentArea.style.opacity = '1';
+
+                if (content.includes('KEY_FRAGMENT: 7')) {
+                    feedbackMessage.className = "text-yellow-400 mt-2 h-4";
+                    feedbackMessage.textContent = 'A new clue has been found.';
+                }
+            }, 300);
+        }
+
+        // --- NAVIGATION & SUBMISSION ---
+        function navigate(path) {
+            currentDirectory = path;
+            renderFileBrowser();
+        }
+
+        async function submitAnswer() {
+            const input = answerInput.value.trim();
+            if (input === "7") {
+                feedbackMessage.className = "text-green-400 mt-2 h-4";
+                await typeWriterEffect(feedbackMessage, 'Fragment accepted: 7');
+                
+                gameProgress.foundDigits[2] = 7;
+                localStorage.setItem('gameProgress', JSON.stringify(gameProgress));
+
+                setTimeout(() => window.location.href = "segment4.html", 2000);
+            } else {
+                feedbackMessage.className = "text-red-500 mt-2 h-4";
+                await typeWriterEffect(feedbackMessage, 'Incorrect digit. Try again, Agent.');
+            }
+            answerInput.value = '';
+        }
+
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            gameProgress.currentSegment = 3;
+            localStorage.setItem('gameProgress', JSON.stringify(gameProgress));
+            renderFileBrowser();
+            submitButton.onclick = submitAnswer;
+            answerInput.addEventListener('keyup', (event) => {
+                if (event.key === 'Enter') submitAnswer();
+            });
+        };
+    </script>
+</body>
+</html>

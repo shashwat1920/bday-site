@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Chimera - The Final Code</title>
+    <!-- Tailwind CSS CDN for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Shared styles from previous segments */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #1a202c; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow: hidden; }
+        .device-container { background-color: #0d1117; border-radius: 2.5rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); width: 100%; max-width: 420px; height: 90vh; max-height: 800px; display: flex; flex-direction: column; overflow: hidden; position: relative; border: 8px solid #2d3748; }
+        
+        .device-screen { 
+            flex-grow: 1; 
+            background-color: #000; 
+            color: #4ade80; 
+            padding: 1.5rem; 
+            display: flex; 
+            flex-direction: column; 
+            text-align: center; 
+            font-family: 'monospace', 'Courier New', Courier, sans-serif; 
+            overflow-y: auto;
+        }
+        
+        .text-green-400 { color: #4ade80; }
+        .text-red-500 { color: #ef4444; }
+        .text-yellow-400 { color: #facc15; }
+        input[type="text"] { background-color: #1f2937; border: 1px solid #4b5563; color: #e5e7eb; padding: 0.75rem 1rem; border-radius: 0.5rem; width: 80%; max-width: 300px; text-align: center; margin-top: 1.5rem; margin-bottom: 0.75rem; font-size: 1.5rem; letter-spacing: 0.5em; }
+        input[type="text"]:focus { outline: none; border-color: #4ade80; box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.5); }
+        button { background-color: #4ade80; color: #1a202c; padding: 0.75rem 2rem; border-radius: 0.5rem; font-weight: bold; cursor: pointer; transition: background-color 0.2s, transform 0.1s; border: none; box-shadow: 4px 4px 6px rgba(0, 0, 0, 0.2); margin-bottom: 1rem; }
+        button:hover { background-color: #22c55e; transform: translateY(-1px); }
+        button:active { transform: translateY(0); }
+        .log-entry {
+            background-color: #111827;
+            border-left: 3px solid #facc15;
+            padding: 1rem;
+            text-align: left;
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+        }
+        .digits-display {
+            font-size: 2.5rem;
+            letter-spacing: 0.2em;
+            margin-top: 1rem;
+            color: #facc15;
+            text-shadow: 0 0 8px rgba(250, 204, 21, 0.5);
+        }
+        .success-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            height: 100%;
+        }
+        /* --- NEW STYLE FOR THE FINAL CODE --- */
+        .final-code {
+            font-size: 4.5rem; /* Much larger font size */
+            font-weight: bold;
+            letter-spacing: 0.1em;
+            color: #ef4444; /* A bright red color */
+            text-shadow: 0 0 5px #ef4444, 0 0 15px #ef4444, 0 0 30px #b91c1c; /* Glowing effect */
+            margin: 1.5rem 0; /* Add space around the code */
+        }
+    </style>
+</head>
+<body>
+    <div class="device-container">
+        <div id="gameScreen" class="device-screen">
+            <div id="puzzleContent">
+                <h1 id="gameTitle" class="text-2xl font-bold text-green-400 mb-2">Phase 5: Final Sequence</h1>
+                <p id="gameHint" class="text-green-400 text-sm mb-4">
+                    All fragments recovered. Decrypt the final security protocol to determine the key.
+                </p>
+
+                <p class="text-sm">RECOVERED DIGITS:</p>
+                <div id="digitsDisplay" class="digits-display"></div>
+
+                <div class="log-entry">
+                    &gt; FINAL DECRYPTION KEY<br>
+                    &gt; 1. The digit '9' is in the third position.<br>
+                    &gt; 2. The final digit is the smallest of the four.<br>
+                    &gt; 3. The first digit is the largest prime number available.
+                </div>
+
+                <div class="mt-auto w-full flex flex-col items-center">
+                    <input type="text" id="answerInput" maxlength="4" placeholder="_ _ _ _">
+                    <button id="submitAnswer">UNLOCK</button>
+                    <p id="feedbackMessage" class="text-red-500 mt-2 h-4"></p>
+                </div>
+            </div>
+
+            <div id="successScreen" class="success-screen hidden">
+                 <h1 class="text-4xl font-bold text-yellow-400 mb-4" style="text-shadow: 0 0 10px #facc15;">ACCESS GRANTED</h1>
+                 <p class="text-green-400">Final code for physical lock:</p>
+                 <!-- --- NEW ELEMENT FOR THE FINAL CODE --- -->
+                 <div id="finalCodeDisplay" class="final-code"></div>
+                 <p class="text-green-400 text-sm mt-2">Congratulations, Agent.</p>
+                 <p class="text-xs mt-8 text-gray-500">You can close this window.</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // --- GAME STATE MANAGEMENT ---
+        const gameProgress = JSON.parse(localStorage.getItem('gameProgress')) || {
+            foundDigits: [9, 3, 7, 5] // Default values for standalone testing
+        };
+        const CORRECT_SEQUENCE = "7593";
+
+        // --- DOM ELEMENT REFERENCES ---
+        const digitsDisplay = document.getElementById('digitsDisplay');
+        const answerInput = document.getElementById('answerInput');
+        const submitButton = document.getElementById('submitAnswer');
+        const feedbackMessage = document.getElementById('feedbackMessage');
+        const puzzleContent = document.getElementById('puzzleContent');
+        const successScreen = document.getElementById('successScreen');
+        const finalCodeDisplay = document.getElementById('finalCodeDisplay'); // New reference
+
+        window.onload = () => {
+            // Display the digits in the order they were discovered.
+            digitsDisplay.textContent = gameProgress.foundDigits.join(' ');
+            
+            submitButton.onclick = submitAnswer;
+            // Allow submission on pressing Enter
+            answerInput.addEventListener('keyup', (event) => {
+                if (event.key === 'Enter') {
+                    submitAnswer();
+                }
+            });
+        };
+        
+        // --- PUZZLE LOGIC ---
+        function submitAnswer() {
+            const input = answerInput.value.trim();
+
+            if (input === CORRECT_SEQUENCE) {
+                feedbackMessage.className = "text-green-400 mt-2 h-4";
+                feedbackMessage.textContent = '> SEQUENCE ACCEPTED. UNLOCKING...';
+                
+                // --- JAVASCRIPT CHANGE: Populate the final code ---
+                finalCodeDisplay.textContent = CORRECT_SEQUENCE;
+
+                setTimeout(() => {
+                    puzzleContent.classList.add('hidden');
+                    successScreen.classList.remove('hidden');
+                }, 1500);
+
+            } else {
+                feedbackMessage.className = "text-red-500 mt-2 h-4";
+                feedbackMessage.textContent = '> ACCESS DENIED: INVALID SEQUENCE';
+                answerInput.value = ''; // Clear input on failure
+            }
+        }
+    </script>
+</body>
+</html>

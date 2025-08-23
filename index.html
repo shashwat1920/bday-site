@@ -7,11 +7,9 @@
     <!-- Tailwind CSS CDN for modern styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Custom font import - Inter is a good, clean choice */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-        
+        /* Using a monospace font for the entire page for thematic consistency */
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'monospace', 'Courier New', Courier, sans-serif;
             background-color: #1a202c;
             display: flex;
             justify-content: center;
@@ -31,13 +29,20 @@
             max-height: 800px;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow: hidden; /* This stays hidden to contain the screen */
             position: relative;
             border: 8px solid #2d3748;
             color: #4ade80;
+        }
+
+        /* --- SCROLLABILITY FIX --- */
+        .device-screen {
+            flex-grow: 1;
             padding: 2rem;
             text-align: center;
-            justify-content: center;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto; /* Allows content to scroll vertically if it overflows */
         }
 
         .intro-list {
@@ -53,11 +58,11 @@
             align-items: flex-start;
         }
 
+        /* Thematic icon styling */
         .intro-list li span {
-            font-family: 'monospace', 'Courier New', Courier, sans-serif;
             font-weight: bold;
-            margin-right: 0.5rem;
-            min-width: 1.5rem;
+            margin-right: 0.75rem;
+            min-width: 1rem;
         }
 
         .start-button {
@@ -84,20 +89,44 @@
 </head>
 <body>
     <div class="device-container">
-        <h1 class="text-2xl font-bold mb-4">Project Chimera: The lost code</h1>
-        <p class="text-sm mb-4">
-            The key is a 4-digit sequence, and you've managed to intercept a corrupted device believed to be the source. Your task is to extract the four digits and their correct order from the fragmented data.
-        </p>
-        <ul class="intro-list">
-            <li><span>1️⃣</span> Click the Button below to begin</li>
-            <li><span>2️⃣</span> Read carefully — clues can hide anywhere</li>
-            <li><span>3️⃣</span> Each file reveals one digit</li>
-            <li><span>4️⃣</span> The final stage reveals the order</li>
-            <li><span>5️⃣</span> Use the full code to unlock the safe</li>
-        </ul>
-        <a href="segment1.html" class="start-button">
-            Begin
-        </a>
+        <div class="device-screen">
+            <h1 class="text-2xl font-bold mb-4">Project Chimera: The lost code</h1>
+            <p id="descriptionText" class="text-sm mb-4 text-left">
+                <!-- Text will be injected by typewriter effect -->
+            </p>
+            <ul class="intro-list">
+                <!-- Thematic text-based icons -->
+                <li><span>&gt;</span> Click the Button below to begin</li>
+                <li><span>&gt;</span> Read carefully — clues can hide anywhere</li>
+                <li><span>&gt;</span> Each file reveals one digit</li>
+                <li><span>&gt;</span> The final stage reveals the order</li>
+                <li><span>&gt;</span> Use the full code to unlock the safe</li>
+            </ul>
+            <a href="segment1.html" class="start-button">
+                Begin
+            </a>
+        </div>
     </div>
+
+    <script>
+        // --- GAME RESET SCRIPT ---
+        // This ensures every visit to the index page starts a fresh game.
+        window.onload = function() {
+            localStorage.removeItem('gameProgress');
+            
+            // --- TYPEWRITER ANIMATION ---
+            const text = "The key is a 4-digit sequence, and you've managed to intercept a corrupted device believed to be the source. Your task is to extract the four digits and their correct order from the fragmented data.";
+            const descriptionElement = document.getElementById('descriptionText');
+            let i = 0;
+            function typeWriter() {
+                if (i < text.length) {
+                    descriptionElement.innerHTML += text.charAt(i);
+                    i++;
+                    setTimeout(typeWriter, 20); // Adjust speed here
+                }
+            }
+            typeWriter();
+        };
+    </script>
 </body>
 </html>

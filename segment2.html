@@ -4,118 +4,137 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Project Chimera - Segment 2</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn/tailwindcss.com"></script>
     <style>
-        /* Shared styles from previous segments */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #1a202c; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow: hidden; }
-        .device-container { background-color: #0d1117; border-radius: 2.5rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); width: 100%; max-width: 420px; height: 90vh; max-height: 800px; display: flex; flex-direction: column; overflow: hidden; position: relative; border: 8px solid #2d3748; }
-        .device-screen { flex-grow: 1; background-color: #000; color: #4ade80; padding: 1.5rem; display: flex; flex-direction: column; text-align: center; font-family: 'monospace', 'Courier New', Courier, sans-serif; overflow-y: auto; }
+        /* Using a monospace font for thematic consistency */
+        body { 
+            font-family: 'monospace', 'Courier New', Courier, sans-serif; 
+            background-color: #1a202c; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            overflow: hidden; 
+        }
+        .device-container { 
+            background-color: #0d1117; 
+            border-radius: 2.5rem; 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); 
+            width: 100%; 
+            max-width: 420px; 
+            height: 90vh; 
+            max-height: 800px; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+            position: relative; 
+            border: 8px solid #2d3748; 
+        }
+        /* --- SCROLLABILITY FIX --- */
+        .device-screen { 
+            flex-grow: 1; 
+            background-color: #000; 
+            color: #4ade80; 
+            padding: 1.5rem; 
+            display: flex; 
+            flex-direction: column; 
+            text-align: center; 
+            overflow-y: auto; /* Allows vertical scrolling */
+        }
         .text-green-400 { color: #4ade80; }
         .text-red-500 { color: #ef4444; }
-        input[type="text"] { background-color: #1f2937; border: 1px solid #4b5563; color: #e5e7eb; padding: 0.75rem 1rem; border-radius: 0.5rem; width: 80%; max-width: 300px; text-align: center; margin-top: 1.5rem; margin-bottom: 0.75rem; }
-        input[type="text"]:focus { outline: none; border-color: #4ade80; box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.5); }
-        button { background-color: #4ade80; color: #1a202c; padding: 0.75rem 2rem; border-radius: 0.5rem; font-weight: bold; cursor: pointer; transition: background-color 0.2s, transform 0.1s; border: none; box-shadow: 4px 4px 6px rgba(0, 0, 0, 0.2); margin-bottom: 1rem; }
-        button:hover { background-color: #22c55e; transform: translateY(-1px); }
-        button:active { transform: translateY(0); }
-        .log-entry { font-size: 0.9rem; text-align: left; margin-bottom: 0.5rem; }
-        .log-entry.red { color: #ef4444; }
-        .log-entry.yellow { color: #facc15; }
+        .text-yellow-400 { color: #facc15; }
+        input[type="text"] { 
+            background-color: #1f2937; 
+            border: 1px solid #4b5563; 
+            color: #e5e7eb; 
+            padding: 0.75rem 1rem; 
+            border-radius: 0.5rem; 
+            width: 80%; 
+            max-width: 300px; 
+            text-align: center; 
+            margin-top: 1.5rem; 
+            margin-bottom: 0.75rem; 
+        }
+        input[type="text"]:focus { 
+            outline: none; 
+            border-color: #4ade80; 
+            box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.5); 
+        }
+        button { 
+            background-color: #4ade80; 
+            color: #1a202c; 
+            padding: 0.75rem 2rem; 
+            border-radius: 0.5rem; 
+            font-weight: bold; 
+            cursor: pointer; 
+            transition: background-color 0.2s, transform 0.1s; 
+            border: none; 
+            box-shadow: 4px 4px 6px rgba(0, 0, 0, 0.2); 
+            margin-bottom: 1rem; 
+        }
+        button:hover { 
+            background-color: #22c55e; 
+            transform: translateY(-1px); 
+        }
+        button:active { 
+            transform: translateY(0); 
+        }
+        .log-entry { 
+            font-size: 0.9rem; 
+            text-align: left; 
+            margin-bottom: 0.5rem; 
+        }
         .audio-player-container { 
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-top: 1rem;
+            transition: opacity 0.5s ease-out;
         }
-        .play-button {
-            background-color: #4ade80;
-            color: #1a202c;
-            padding: 1rem 2rem;
-            border-radius: 9999px; /* Pill shape */
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.2s, transform 0.1s;
-            border: none;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .play-button:hover {
-            background-color: #22c55e;
-            transform: translateY(-1px);
-        }
-        .play-button:active {
-            transform: translateY(0);
-        }
-        .audio-label {
-            margin-top: 0.5rem;
-            color: #4ade80;
-            font-size: 0.8rem;
-        }
-
-        /* Flex container for buttons */
         .audio-controls {
             display: flex;
             gap: 1rem;
             margin-top: 1rem;
+            justify-content: center;
+        }
+        .audio-button {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            background-color: #374151;
+            color: #e5e7eb;
+        }
+        .audio-button:hover {
+            background-color: #4b5563;
         }
     </style>
 </head>
 <body>
     <div class="device-container">
         <div id="gameScreen" class="device-screen">
-            <h1 id="gameTitle" class="text-2xl font-bold text-green-400 mb-4">Phase 2: Signal Recovery Protocol</h1>
-            <p id="gameHint" class="text-green-400 text-sm mb-6">
-                Isolate the true signal from the static. Translation yields the next code fragment.
-            </p>
-
-            <div id="terminal-output" class="w-full text-left">
-                <p class="log-entry">> Boot sequence stable. Initializing network connection...</p>
-                <p class="log-entry">> Analyzing packet headers... <span class="text-green-400">OK</span></p>
-                <p class="log-entry">> Synchronizing timecode... <span class="text-green-400">OK</span></p>
-                <p class="log-entry">> Incoming audio transmission: status = <span class="text-red-500">CORRUPTED</span></p>
-                <p class="log-entry">> Attempting signal reconstruction...</p>
-                <p class="log-entry yellow"> > Playing waveform data...</p>
-            </div>
-
-            <div id="audio-player-container" class="audio-player-container">
-                <audio id="morseAudio" src="morse_code.wav" preload="auto"></audio>
-                <button id="playButton" class="play-button">Play Transmission</button>
-                <div id="audioControls" class="audio-controls hidden">
-                    <button id="stopButton" class="play-button bg-red-500 hover:bg-red-600 text-white">Stop</button>
-                    <button id="replayButton" class="play-button bg-gray-600 hover:bg-gray-700 text-white">Replay</button>
-                </div>
-                <p id="audioLabel" class="audio-label hidden">Transmission playing...</p>
+            <h1 id="gameTitle" class="text-2xl font-bold text-green-400 mb-4">Phase 2: Signal Recovery</h1>
+            <div id="puzzleContainer" class="w-full flex flex-col items-center flex-grow">
+                <!-- Content changes dynamically -->
             </div>
             
-            <div id="input-container" class="w-full flex flex-col items-center">
-                <input type="text" id="answerInput" placeholder="Enter the decrypted word here...">
+            <div class="w-full flex flex-col items-center mt-auto">
+                <input type="text" id="answerInput" placeholder="Enter decrypted word...">
                 <button id="submitAnswer">Submit</button>
+                <p id="feedbackMessage" class="text-red-500 mt-2 h-4"></p>
             </div>
-            <p id="feedbackMessage" class="text-red-500 mt-4"></p>
         </div>
     </div>
     
     <script>
-        let gameProgress = JSON.parse(localStorage.getItem('gameProgress')) || {
-            currentSegment: 2,
-            foundDigits: [9] 
-        };
-        
+        // --- GAME STATE MANAGEMENT ---
+        let gameProgress = JSON.parse(localStorage.getItem('gameProgress')) || { currentSegment: 2, foundDigits: [9] };
         let segment2Phase = 1;
 
-        const morseAudio = document.getElementById('morseAudio');
-        const playButton = document.getElementById('playButton');
-        const stopButton = document.getElementById('stopButton');
-        const replayButton = document.getElementById('replayButton');
-        const audioControls = document.getElementById('audioControls');
-        const audioLabel = document.getElementById('audioLabel');
+        // --- DOM ELEMENT REFERENCES ---
+        const gameTitle = document.getElementById('gameTitle');
+        const puzzleContainer = document.getElementById('puzzleContainer');
         const answerInput = document.getElementById('answerInput');
         const submitButton = document.getElementById('submitAnswer');
         const feedbackMessage = document.getElementById('feedbackMessage');
-        const gameHint = document.getElementById('gameHint');
-        const inputContainer = document.getElementById('input-container');
 
-
+        // --- UTILITY FUNCTIONS ---
         function typeWriterEffect(element, text, delay = 50) {
             element.innerHTML = '';
             let i = 0;
@@ -132,98 +151,94 @@
                 type();
             });
         }
-        
-        function submitAnswer() {
-            const input = answerInput.value.trim().toUpperCase();
+
+        // --- PUZZLE SETUP ---
+        function setupPhase1() {
+            puzzleContainer.innerHTML = `
+                <p id="gameHint" class="text-sm mb-6">Isolate the true signal from the static. Translation yields the next code fragment.</p>
+                <div id="terminal-output" class="w-full text-left">
+                    <p class="log-entry">> Boot sequence stable...</p>
+                    <p class="log-entry">> Incoming audio transmission: status = <span class="text-red-500">CORRUPTED</span></p>
+                    <p class="log-entry text-yellow-400">> Playing waveform data...</p>
+                </div>
+                <div id="audio-player-container" class="w-full flex flex-col items-center mt-4">
+                    <audio id="morseAudio" src="morse_code.wav" preload="auto"></audio>
+                    <div id="audioControls" class="audio-controls">
+                        <button id="playButton" class="audio-button">PLAY</button>
+                        <button id="stopButton" class="audio-button">STOP</button>
+                        <button id="replayButton" class="audio-button">REPLAY</button>
+                    </div>
+                </div>
+            `;
+            const morseAudio = document.getElementById('morseAudio');
+            document.getElementById('playButton').onclick = () => morseAudio.play();
+            document.getElementById('stopButton').onclick = () => { morseAudio.pause(); morseAudio.currentTime = 0; };
+            document.getElementById('replayButton').onclick = () => { morseAudio.currentTime = 0; morseAudio.play(); };
+        }
+
+        async function setupPhase2() {
+            const audioPlayer = document.getElementById('audio-player-container');
+            const terminalOutput = document.getElementById('terminal-output');
             
+            audioPlayer.style.opacity = '0';
+            terminalOutput.style.opacity = '0';
+            
+            setTimeout(async () => {
+                puzzleContainer.innerHTML = `
+                    <div id="log1" class="log-entry"></div>
+                    <div id="log2" class="log-entry mt-2 text-yellow-400"></div>
+                `;
+                gameTitle.textContent = 'Decryption Complete';
+                answerInput.placeholder = "Enter number of consonants...";
+                answerInput.value = '';
+
+                await typeWriterEffect(document.getElementById('log1'), `> Decoded Word: <span class="text-green-400">BOINK</span>`);
+                await typeWriterEffect(document.getElementById('log2'), `> Task: Count the number of consonants in the decoded word.`);
+                
+                segment2Phase = 2;
+            }, 500); // Wait for fade-out
+        }
+
+        // --- MAIN GAME LOGIC ---
+        async function handleSubmit() {
+            const input = answerInput.value.trim().toUpperCase();
+            feedbackMessage.textContent = '';
+
             if (segment2Phase === 1) {
-                // First puzzle: Decode Morse code
                 if (input === "BOINK") {
-                    feedbackMessage.className = "text-green-400 mt-4";
-                    typeWriterEffect(feedbackMessage, `> Transmission decoded: "BOINK"`).then(() => {
-                        // Move to second puzzle
-                        feedbackMessage.textContent = '';
-                        gameHint.textContent = 'The recovered word contains a numeric fragment.';
-                        document.getElementById('audio-player-container').style.display = 'none';
-                        document.getElementById('terminal-output').innerHTML = `
-                            <div class="log-entry">
-                                > Decoded Word: <span class="text-green-400">BOINK</span>
-                            </div>
-                            <div class="log-entry mt-2">
-                                > Task: Count the number of consonants in the decoded word.
-                            </div>
-                        `;
-                        answerInput.placeholder = "Enter number of consonants...";
-                        answerInput.value = '';
-                        segment2Phase = 2;
-                    });
+                    feedbackMessage.className = "text-green-400 mt-2 h-4";
+                    await typeWriterEffect(feedbackMessage, `> Transmission decoded.`);
+                    feedbackMessage.textContent = '';
+                    await setupPhase2();
                 } else {
-                    feedbackMessage.className = "text-red-500 mt-4";
-                    feedbackMessage.innerHTML = `
-                        > Error: Signal mismatch.<br>
-                        > Suggestion: Listen to the transmission carefully.
-                    `;
+                    feedbackMessage.className = "text-red-500 mt-2 h-4";
+                    feedbackMessage.textContent = `> Error: Signal mismatch.`;
                 }
             } else if (segment2Phase === 2) {
-                // Second puzzle: Count consonants
-                const consonants = (input) => {
-                    const letters = input.match(/[A-Z]/g);
-                    if (!letters) return 0;
-                    return letters.filter(char => !"AEIOU".includes(char)).length;
-                };
+                if (input === "3") {
+                    feedbackMessage.className = "text-green-400 mt-2 h-4";
+                    await typeWriterEffect(feedbackMessage, `> Numeric fragment recovered: 3`);
+                    
+                    gameProgress.foundDigits[1] = 3;
+                    localStorage.setItem('gameProgress', JSON.stringify(gameProgress));
 
-                const correctCount = consonants("BOINK");
-                const inputNumber = parseInt(input);
-                
-                if (!isNaN(inputNumber) && inputNumber === correctCount) {
-                    feedbackMessage.className = "text-green-400 mt-4";
-                    typeWriterEffect(feedbackMessage, `> Numeric fragment recovered: ${correctCount}. Storing in secure memory slot 2/4...`).then(() => {
-                        gameProgress.foundDigits[1] = correctCount; // Digit is 3
-                        localStorage.setItem('gameProgress', JSON.stringify(gameProgress));
-                        setTimeout(() => {
-                            window.location.href = "segment3.html";
-                        }, 3000);
-                    });
+                    setTimeout(() => window.location.href = "segment3.html", 2000);
                 } else {
-                    feedbackMessage.className = "text-red-500 mt-4";
-                    feedbackMessage.textContent = `> Error: Incorrect count. Please try again.`;
+                    feedbackMessage.className = "text-red-500 mt-2 h-4";
+                    feedbackMessage.textContent = `> Error: Incorrect count.`;
                 }
             }
         }
-        
-        // Event listeners for audio playback
-        playButton.addEventListener('click', () => {
-            morseAudio.play();
-            audioLabel.classList.remove('hidden');
-            playButton.classList.add('hidden');
-            audioControls.classList.remove('hidden');
-        });
 
-        stopButton.addEventListener('click', () => {
-            morseAudio.pause();
-            morseAudio.currentTime = 0; // Rewind audio
-            audioLabel.classList.add('hidden');
-            playButton.classList.remove('hidden');
-            audioControls.classList.add('hidden');
-        });
-
-        replayButton.addEventListener('click', () => {
-            morseAudio.currentTime = 0; // Rewind and play again
-            morseAudio.play();
-            audioLabel.classList.remove('hidden');
-            audioControls.classList.remove('hidden');
-        });
-
-        morseAudio.onended = () => {
-            audioLabel.classList.add('hidden');
-            playButton.classList.add('hidden');
-            audioControls.classList.remove('hidden');
-        };
-
+        // --- INITIALIZATION ---
         window.onload = () => {
             gameProgress.currentSegment = 2;
             localStorage.setItem('gameProgress', JSON.stringify(gameProgress));
-            submitButton.onclick = submitAnswer;
+            setupPhase1();
+            submitButton.onclick = handleSubmit;
+            answerInput.addEventListener('keyup', (event) => {
+                if (event.key === 'Enter') handleSubmit();
+            });
         };
     </script>
 </body>
