@@ -228,8 +228,8 @@
                 document.getElementById('playBtn_s2').onclick = () => morseAudio.play();
                 document.getElementById('pauseBtn_s2').onclick = () => morseAudio.pause();
                 document.getElementById('replayBtn_s2').onclick = () => { morseAudio.currentTime = 0; morseAudio.play(); };
-                morseAudio.ontimeupdate = () => { const p = (morseAudio.currentTime / morseAudio.duration) * 100; document.getElementById('seekProgress_s2').style.width = `${p}%`; };
-                document.getElementById('seekBar_s2').onclick = (e) => { const rect = e.target.getBoundingClientRect(); const x = e.clientX - rect.left; morseAudio.currentTime = (x / rect.width) * morseAudio.duration; };
+                morseAudio.ontimeupdate = () => { if (!morseAudio.duration) return; const p = (morseAudio.currentTime / morseAudio.duration) * 100; document.getElementById('seekProgress_s2').style.width = `${p}%`; };
+                document.getElementById('seekBar_s2').onclick = (e) => { if (!morseAudio.duration) return; const rect = e.target.getBoundingClientRect(); const x = e.clientX - rect.left; morseAudio.currentTime = (x / rect.width) * morseAudio.duration; };
             }
             async function setupPhase2() {
                 phase = 2; title.textContent = 'Decryption Complete'; input.placeholder = "Enter number..."; input.value = '';
@@ -250,7 +250,7 @@
             gameContainer.innerHTML = `<div class="segment"><h1 class="text-2xl font-bold mb-2">Phase 3: Filesystem Recon</h1><p id="pathDisplay_s3" class="text-sm mb-4 text-left"></p><div id="contentArea_s3" class="content-area" style="text-align:left;"></div><div class="mt-auto pt-4 border-t border-gray-700"><input type="text" id="answerInput_s3" placeholder="Enter fragment..."><button id="submitBtn_s3">Submit</button><p id="feedback_s3" class="text-red-500 mt-2 h-4"></p></div></div>`;
             let dir = '/'; const pathD = document.getElementById('pathDisplay_s3'), contentA = document.getElementById('contentArea_s3'), input = document.getElementById('answerInput_s3'), feedback = document.getElementById('feedback_s3');
             const fs = {'/':['home','var','etc'],'/home':['agent','guest'],'/home/agent':['readme.txt','log_alpha.txt','notes.bak','archive.zip'],'/home/guest':['photos'],'/var':['logs'],'/var/logs':['system.log','security.log'],'/etc':['config.sys']};
-            const map = {'/home/agent/log_alpha.txt':'KEY_FRAGMENT: 7','/home/agent/readme.txt':'Welcome, agent.','/home/agent/notes.bak':'Fragmented.','/home/agent/archive.zip':'Protected.','/home/guest/photos':'Corrupted.','/var/logs/system.log':'OK.','/var/logs/security.log':'No threats.','/etc/config.sys':'Do not modify.'};
+            const map = {'/home/agent/log_alpha.txt':'...\\nSESSION_ID: 8ac4f52\\nKEY_FRAGMENT: 7\\nTransmission complete.','/home/agent/readme.txt':'Welcome, agent. This directory contains your local mission files. Proceed with caution.','/home/agent/notes.bak':'Backup of personal notes. Data fragmented.','/home/agent/archive.zip':'File is password protected. Cannot open.','/home/guest/photos':'Binary data. Corrupted images.','/var/logs/system.log':'System initiated. No critical errors detected.','/var/logs/security.log':'Security scan complete. No threats found.','/etc/config.sys':'System configuration. Do not modify.'};
             function render() { contentA.style.opacity='0'; setTimeout(()=>{ pathD.textContent=`Current: ${dir}`; let h=''; if(dir!=='/'){const p=dir.split('/').filter(Boolean).slice(0,-1).join('/'); h+=`<button class="file-item" onclick="window.s3_navigate('/${p}')">../</button>`;} const c=fs[dir.replace(/\/$/,'')||'/']; if(c){c.forEach(i=>{const f=!i.includes('.'),ico=f?'📁':'📄',p=`${dir}${i}`,a=f?`window.s3_navigate('${p}/')`:`window.s3_viewFile('${p}')`; h+=`<button class="file-item" onclick="${a}">${ico} ${i}</button>`;});} contentA.innerHTML=h; contentA.style.opacity='1';},300); }
             window.s3_viewFile = (p) => { contentA.style.opacity='0'; setTimeout(()=>{const c=map[p]||'Access denied.'; contentA.innerHTML=`<div class="file-content-view">${c}</div><button class="file-item mt-4" onclick="window.s3_render()">[ Close ]</button>`; contentA.style.opacity='1'; if(c.includes('KEY_FRAGMENT: 7')){feedback.className="text-yellow-400 mt-2 h-4"; feedback.textContent='Clue found.';}},300); }
             window.s3_navigate = (p) => { dir=p; render(); }; window.s3_render = render;
@@ -269,10 +269,32 @@
             document.getElementById('tuneUp_s4').onclick=()=>updateFreq(0.5); document.getElementById('tuneDown_s4').onclick=()=>updateFreq(-0.5); document.getElementById('amplifyBtn_s4').onclick=amplify; submitBtn.onclick=handleSubmit;
             const canvas = document.getElementById('monitorCanvas'), ctx = canvas.getContext('2d'), dpr = window.devicePixelRatio||1, rect = canvas.getBoundingClientRect(); canvas.width=rect.width*dpr; canvas.height=rect.height*dpr; ctx.scale(dpr,dpr); const width=canvas.width/dpr, height=canvas.height/dpr; let time=0;
             const signals = [{f:2,p:0.5,n:0.1,c:'#047857'},{f:3,p:1.5,n:0.15,c:'#059669'},{f:1.5,p:0,n:1.0,c:'#facc15'}];
-            const spikePattern = [0.4, 1.0, 0.3, 1.0, 0.4, 1.0, 0.2, 1.0, 0.4, 1.0]; let patternIndex=0, lastPatternUpdate=0;
             function animate() { if(gameState.currentSegment!=='4')return; ctx.clearRect(0,0,canvas.width,canvas.height); time+=0.02;
                 if(phase===1){ const prox=Math.min(1,Math.abs(freq-TARGET)/MAX_DIFF); signals.forEach((s,i)=>{ const isT=i===2; ctx.beginPath(); ctx.strokeStyle=s.c; let noise,amp,lw; if(isT){noise=s.n*prox; amp=height/4*(1-prox*0.7); lw=1+(1-prox)*1.5;}else{noise=s.n+(1-prox)*0.8; amp=height/5; lw=1;} ctx.lineWidth=lw; for(let x=0;x<width;x++){ const a=(x/width)*Math.PI*2*s.f+time+s.p, y=height/2+Math.sin(a)*amp+(Math.random()-0.5)*height*noise*0.5; if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);} ctx.stroke();});
-                }else{ if(Date.now()-lastPatternUpdate>200){patternIndex=(patternIndex+1)%spikePattern.length; lastPatternUpdate=Date.now();} ctx.strokeStyle='rgba(74,222,128,0.3)'; ctx.lineWidth=1; ctx.beginPath();ctx.moveTo(0,height/2);ctx.lineTo(width,height/2);ctx.stroke(); for(let i=0;i<spikePattern.length;i++){ const val=spikePattern[(patternIndex+i)%spikePattern.length], isMajor=val===1.0, spikeHeight=isMajor?height/2.5:height/5*val; const x=(i/spikePattern.length)*width; if(val>0.1){ctx.beginPath();ctx.strokeStyle=isMajor?'#facc15':'#4ade80'; ctx.lineWidth=isMajor?3:1; ctx.moveTo(x,height/2);ctx.lineTo(x,height/2-spikeHeight);ctx.stroke();}}}
+                } else {
+                    const cycleProgress = (Date.now() % 2000) / 2000;
+                    ctx.strokeStyle='rgba(74,222,128,0.3)'; ctx.lineWidth=1; ctx.beginPath();ctx.moveTo(0,height/2);ctx.lineTo(width,height/2);ctx.stroke();
+                    const spikePattern = [1.0, 0.4, 0.3, 1.0, 0.2, 1.0, 0.4, 0.3, 1.0, 0.2, 1.0]; // 5 major, 6 minor
+                    for (let i = 0; i < spikePattern.length; i++) {
+                        const spikePosition = (i + 1) / (spikePattern.length + 1);
+                        const timeUntilSpike = spikePosition - cycleProgress;
+                        let pulseHeight = 0;
+                        if (timeUntilSpike > -0.05 && timeUntilSpike < 0.05) {
+                             pulseHeight = (0.05 - Math.abs(timeUntilSpike)) / 0.05;
+                        }
+                        if (pulseHeight > 0) {
+                            const isMajor = spikePattern[i] === 1.0;
+                            const spikeHeight = (isMajor ? height / 2.5 : height / 6) * pulseHeight;
+                            ctx.beginPath();
+                            ctx.strokeStyle = isMajor ? '#facc15' : '#4ade80';
+                            ctx.lineWidth = isMajor ? 3 : 1;
+                            const x = spikePosition * width;
+                            ctx.moveTo(x, height / 2);
+                            ctx.lineTo(x, height / 2 - spikeHeight);
+                            ctx.stroke();
+                        }
+                    }
+                }
                 requestAnimationFrame(animate);
             }
             animate();
