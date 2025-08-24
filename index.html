@@ -70,13 +70,12 @@
         }
         button:hover { background-color: #22c55e; transform: translateY(-1px); }
         
-        /* --- FULLSCREEN BUTTON FIX --- */
         #fullscreenBtn {
             position: absolute; 
             top: 16px; 
             right: 16px; 
-            width: 24px; /* Made smaller */
-            height: 24px; /* Made smaller */
+            width: 24px;
+            height: 24px;
             cursor: pointer; 
             z-index: 20; 
             background: none; 
@@ -92,11 +91,14 @@
         .log-entry { font-size: 0.9rem; text-align: left; margin-bottom: 0.5rem; width:100%; }
         .audio-controls { display: flex; gap: 1rem; margin-top: 1rem; justify-content: center; }
         .audio-button { padding: 0.75rem 1.5rem; font-size: 1rem; background-color: #374151; color: #e5e7eb; }
+        .seek-bar-container { width: 80%; max-width: 300px; height: 8px; background-color: #374151; border-radius: 4px; margin-top: 1rem; cursor: pointer; }
+        .seek-bar-progress { width: 0%; height: 100%; background-color: #4ade80; border-radius: 4px; }
         .file-item { display: block; width: 100%; text-align: left; padding: 0.5rem 0.25rem; background-color: transparent; color: #4ade80; border: none; cursor: pointer; }
         .file-item:hover { background-color: rgba(74, 222, 128, 0.1); }
         .file-content-view { white-space: pre-wrap; word-wrap: break-word; font-size: 0.9rem; text-align: left; background-color: #111827; padding: 1rem; border-radius: 0.5rem; }
         #monitorCanvas { width: 100%; height: 200px; background-color: #020617; border-radius: 0.5rem; margin-top: 1rem; border: 1px solid #1e293b; }
         .tune-button { padding: 0.5rem 1rem; font-size: 1.2rem; background-color: #374151; color: #e5e7eb; }
+        .amplify-button { background-color: #facc15; color: #111827; }
         .digits-display { font-size: 2.5rem; letter-spacing: 0.2em; margin-top: 1rem; color: #facc15; text-shadow: 0 0 8px rgba(250, 204, 21, 0.5); }
         .final-code { font-size: 4.5rem; font-weight: bold; letter-spacing: 0.1em; color: #ef4444; text-shadow: 0 0 5px #ef4444, 0 0 15px #ef4444, 0 0 30px #b91c1c; margin: 1.5rem 0; }
     </style>
@@ -111,15 +113,11 @@
         </div>
     </div>
     
-    <!-- Audio element for segment 2 -->
     <audio id="morseAudio" src="morse_code.wav" preload="auto"></audio>
 
     <script>
         // --- GLOBAL GAME STATE & SETUP ---
-        const gameState = {
-            currentSegment: 'intro',
-            foundDigits: []
-        };
+        const gameState = { currentSegment: 'intro', foundDigits: [] };
         const gameContainer = document.getElementById('game-container');
 
         // --- MOBILE VIEWPORT & FULLSCREEN ---
@@ -127,46 +125,43 @@
         window.addEventListener('resize', setAppHeight);
         setAppHeight();
 
-        document.getElementById('fullscreenBtn').addEventListener('click', () => {
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        fullscreenBtn.addEventListener('click', () => {
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen().catch(console.error);
             } else {
                 document.exitFullscreen();
             }
         });
+        document.addEventListener('fullscreenchange', () => {
+            fullscreenBtn.classList.toggle('hidden', !!document.fullscreenElement);
+        });
 
         // --- NAVIGATION ---
         function navigateTo(segment) {
             gameState.currentSegment = segment;
-            gameContainer.innerHTML = ''; // Clear previous content
+            gameContainer.innerHTML = '';
             const segmentFunction = window[`setupSegment_${segment}`];
-            if (segmentFunction) {
-                segmentFunction();
-            }
+            if (segmentFunction) segmentFunction();
         }
         
         // --- UTILITY: TYPEWRITER ---
         function typeWriterEffect(element, text, delay = 30) {
-            element.innerHTML = '';
-            let i = 0;
+            element.innerHTML = ''; let i = 0;
             return new Promise(resolve => {
                 function type() {
                     if (i < text.length) {
                         let char = text.charAt(i);
                         if (char === '<') {
-                            const closingTagIndex = text.indexOf('>', i);
-                            if (closingTagIndex !== -1) {
-                                element.innerHTML += text.substring(i, closingTagIndex + 1);
-                                i = closingTagIndex;
+                            const end = text.indexOf('>', i);
+                            if (end !== -1) {
+                                element.innerHTML += text.substring(i, end + 1);
+                                i = end;
                             }
-                        } else {
-                            element.innerHTML += char;
-                        }
+                        } else { element.innerHTML += char; }
                         i++;
                         setTimeout(type, delay);
-                    } else {
-                        resolve();
-                    }
+                    } else { resolve(); }
                 }
                 type();
             });
@@ -186,418 +181,98 @@
                             <li><span>&gt;</span> Read carefully — clues can hide anywhere</li>
                             <li><span>&gt;</span> Each file reveals one digit</li>
                             <li><span>&gt;</span> The final stage reveals the order</li>
-                            <li><span>&gt;</span> Use the full code to unlock the safe</li>
                         </ul>
                     </div>
                     <button id="startBtn" class="mt-auto">Begin</button>
                 </div>`;
             document.getElementById('startBtn').onclick = () => navigateTo('1');
-            const desc = "The key is a 4-digit sequence, and you've managed to intercept a corrupted device believed to be the source. Your task is to extract the four digits and their correct order from the fragmented data.";
+            const desc = "The key is a 4-digit sequence. Your task is to extract the four digits and their correct order from the fragmented data.";
             typeWriterEffect(document.getElementById('descriptionText'), desc);
         }
 
         // --- SEGMENT 1: BOOT SEQUENCE ---
         function setupSegment_1() {
-            // HTML structure for Segment 1
-            gameContainer.innerHTML = `
-                <div class="segment">
-                    <h1 id="gameTitle_s1" class="text-2xl font-bold mb-4">Phase 1: Boot Sequence</h1>
-                    <div id="puzzleContainer_s1" class="content-area"></div>
-                    <div class="w-full flex flex-col items-center mt-auto pt-4 border-t border-gray-700">
-                        <input type="text" id="answerInput_s1" placeholder="Enter your answer here...">
-                        <button id="submitBtn_s1">Submit</button>
-                        <p id="feedback_s1" class="text-red-500 mt-2 h-4"></p>
-                    </div>
-                </div>`;
-            
-            // Logic for Segment 1
+            gameContainer.innerHTML = `<div class="segment"><h1 id="gameTitle_s1" class="text-2xl font-bold mb-4">Phase 1: Boot Sequence</h1><div id="puzzleContainer_s1" class="content-area"></div><div class="w-full flex flex-col items-center mt-auto pt-4 border-t border-gray-700"><input type="text" id="answerInput_s1" placeholder="Enter answer..."><button id="submitBtn_s1">Submit</button><p id="feedback_s1" class="text-red-500 mt-2 h-4"></p></div></div>`;
             let phase = 1;
-            const title = document.getElementById('gameTitle_s1');
-            const puzzle = document.getElementById('puzzleContainer_s1');
-            const input = document.getElementById('answerInput_s1');
-            const feedback = document.getElementById('feedback_s1');
-
+            const title = document.getElementById('gameTitle_s1'), puzzle = document.getElementById('puzzleContainer_s1'), input = document.getElementById('answerInput_s1'), feedback = document.getElementById('feedback_s1');
             function setupPhase1() {
-                puzzle.innerHTML = `
-                    <p class="text-base mb-6">Hint: A clear mind is needed to unscramble a system warning.</p>
-                    <div id="scatteredLettersContainer"></div>`;
-                
-                const container = document.getElementById('scatteredLettersContainer');
-                const characters = "0123456789!@#$%^&*()";
-                for (let i = 0; i < 200; i++) {
-                    const char = characters.charAt(Math.floor(Math.random() * characters.length));
-                    const el = document.createElement('span');
-                    el.className = 'scattered-letter background-noise-letter';
-                    el.textContent = char;
-                    el.style.top = `${Math.random() * 90}%`;
-                    el.style.left = `${Math.random() * 90}%`;
-                    container.appendChild(el);
-                }
-                const gridCells = [
-                    { top: [0, 33], left: [0, 33] }, { top: [0, 33], left: [33, 66] }, { top: [0, 33], left: [66, 100] },
-                    { top: [33, 66], left: [0, 33] }, { top: [33, 66], left: [33, 66] }, { top: [33, 66], left: [66, 100] }
-                ];
-                "ALERTS".split('').forEach((letter, index) => {
-                    const cell = gridCells[index % gridCells.length];
-                    const el = document.createElement('span');
-                    el.className = 'scattered-letter clue-letter';
-                    el.textContent = letter;
-                    const top = cell.top[0] + Math.random() * (cell.top[1] - cell.top[0]);
-                    const left = cell.left[0] + Math.random() * (cell.left[1] - cell.left[0]);
-                    el.style.top = `${top}%`;
-                    el.style.left = `${left}%`;
-                    container.appendChild(el);
-                });
+                puzzle.innerHTML = `<p class="text-base mb-6">Hint: Unscramble the system warning.</p><div id="scatteredLettersContainer"></div>`;
+                const container = document.getElementById('scatteredLettersContainer'), chars = "0123456789!@#$%^&*()";
+                for (let i = 0; i < 200; i++) { const char = chars.charAt(Math.floor(Math.random() * chars.length)), el = document.createElement('span'); el.className = 'scattered-letter background-noise-letter'; el.textContent = char; el.style.top = `${Math.random()*90}%`; el.style.left = `${Math.random()*90}%`; container.appendChild(el); }
+                const grid = [{t:[0,33],l:[0,33]},{t:[0,33],l:[33,66]},{t:[0,33],l:[66,100]},{t:[33,66],l:[0,33]},{t:[33,66],l:[33,66]},{t:[33,66],l:[66,100]}];
+                "ALERTS".split('').forEach((l, i) => { const c = grid[i%grid.length], el = document.createElement('span'); el.className = 'scattered-letter clue-letter'; el.textContent = l; el.style.top = `${c.t[0]+Math.random()*(c.t[1]-c.t[0])}%`; el.style.left = `${c.l[0]+Math.random()*(c.l[1]-c.l[0])}%`; container.appendChild(el); });
             }
-
             async function setupPhase2() {
-                phase = 2;
-                title.textContent = 'DECRYPTION IN PROGRESS';
-                input.placeholder = "Enter number...";
-                input.value = '';
-                puzzle.innerHTML = `
-                    <div id="log1_s1" class="log-entry"></div>
-                    <div id="cipher_s1" style="color:#ef4444; font-size:1.1rem; margin-top:1rem; word-break:break-all;"></div>
-                    <div id="log2_s1" class="log-entry mt-4"></div>
-                    <div id="log3_s1" class="log-entry text-yellow-400"></div>`;
-                await typeWriterEffect(document.getElementById('log1_s1'), `> System Log 2025. Activating DECODE_SHIFT protocol...`);
+                phase = 2; title.textContent = 'DECRYPTION'; input.placeholder = "Enter number..."; input.value = '';
+                puzzle.innerHTML = `<div id="log1_s1" class="log-entry"></div><div id="cipher_s1" style="color:#ef4444;font-size:1.1rem;margin-top:1rem;word-break:break-all;"></div><div id="log2_s1" class="log-entry mt-4"></div><div id="log3_s1" class="log-entry text-yellow-400"></div>`;
+                await typeWriterEffect(document.getElementById('log1_s1'), `> System Log 2025. Activating DECODE_SHIFT...`);
                 await typeWriterEffect(document.getElementById('cipher_s1'), `bmnhm rtsym ini bj mfaj tzw knwxy ywnu??`);
-                await typeWriterEffect(document.getElementById('log2_s1'), `> Final payload requires a single numerical entry.`);
-                await typeWriterEffect(document.getElementById('log3_s1'), `> Analysis: Shift key appears to be the final digit of the log year.`);
+                await typeWriterEffect(document.getElementById('log2_s1'), `> Payload requires single numerical entry.`);
+                await typeWriterEffect(document.getElementById('log3_s1'), `> Analysis: Shift key is final digit of log year.`);
             }
-
             async function handleSubmit() {
-                const answer = input.value.trim().toUpperCase();
-                feedback.textContent = '';
-                if (phase === 1) {
-                    if (answer === "ALERTS") {
-                        await typeWriterEffect(feedback, 'Correct! Initiating decryption...');
-                        await setupPhase2();
-                    } else {
-                        await typeWriterEffect(feedback, 'Access Denied.');
-                    }
-                } else if (phase === 2) {
-                    if (answer === "9") {
-                        await typeWriterEffect(feedback, 'Correct! First digit recovered: 9');
-                        gameState.foundDigits.push(9);
-                        setTimeout(() => navigateTo('2'), 1500);
-                    } else {
-                        await typeWriterEffect(feedback, 'Incorrect. The key is a single digit.');
-                    }
-                }
+                const answer = input.value.trim().toUpperCase(); feedback.textContent = '';
+                if (phase === 1) { if (answer === "ALERTS") { await typeWriterEffect(feedback, 'Correct!'); await setupPhase2(); } else { await typeWriterEffect(feedback, 'Access Denied.'); } }
+                else if (phase === 2) { if (answer === "9") { await typeWriterEffect(feedback, 'Digit recovered: 9'); gameState.foundDigits.push(9); setTimeout(() => navigateTo('2'), 1500); } else { await typeWriterEffect(feedback, 'Incorrect key.'); } }
             }
-            
-            setupPhase1();
-            document.getElementById('submitBtn_s1').onclick = handleSubmit;
+            setupPhase1(); document.getElementById('submitBtn_s1').onclick = handleSubmit;
         }
 
         // --- SEGMENT 2: SIGNAL RECOVERY ---
         function setupSegment_2() {
-            gameContainer.innerHTML = `
-                <div class="segment">
-                    <h1 id="gameTitle_s2" class="text-2xl font-bold mb-4">Phase 2: Signal Recovery</h1>
-                    <div id="puzzleContainer_s2" class="content-area"></div>
-                     <div class="w-full flex flex-col items-center mt-auto pt-4 border-t border-gray-700">
-                        <input type="text" id="answerInput_s2" placeholder="Enter decrypted word...">
-                        <button id="submitBtn_s2">Submit</button>
-                        <p id="feedback_s2" class="text-red-500 mt-2 h-4"></p>
-                    </div>
-                </div>`;
-
+            gameContainer.innerHTML = `<div class="segment"><h1 id="gameTitle_s2" class="text-2xl font-bold mb-4">Phase 2: Signal Recovery</h1><div id="puzzleContainer_s2" class="content-area"></div><div class="w-full flex flex-col items-center mt-auto pt-4 border-t border-gray-700"><input type="text" id="answerInput_s2" placeholder="Enter decrypted word..."><button id="submitBtn_s2">Submit</button><p id="feedback_s2" class="text-red-500 mt-2 h-4"></p></div></div>`;
             let phase = 1;
-            const title = document.getElementById('gameTitle_s2');
-            const puzzle = document.getElementById('puzzleContainer_s2');
-            const input = document.getElementById('answerInput_s2');
-            const feedback = document.getElementById('feedback_s2');
-            const morseAudio = document.getElementById('morseAudio');
-
+            const title = document.getElementById('gameTitle_s2'), puzzle = document.getElementById('puzzleContainer_s2'), input = document.getElementById('answerInput_s2'), feedback = document.getElementById('feedback_s2'), morseAudio = document.getElementById('morseAudio');
             function setupPhase1() {
-                puzzle.innerHTML = `
-                    <p class="text-sm mb-6">Isolate the true signal. Translation yields the next fragment.</p>
-                    <div class="w-full text-left">
-                        <p class="log-entry">> Incoming audio: status = <span class="text-red-500">CORRUPTED</span></p>
-                        <p class="log-entry text-yellow-400">> Playing waveform...</p>
-                    </div>
-                    <div class="w-full flex flex-col items-center mt-4">
-                        <div class="audio-controls">
-                            <button id="playBtn_s2" class="audio-button">PLAY</button>
-                            <button id="stopBtn_s2" class="audio-button">STOP</button>
-                        </div>
-                    </div>`;
+                puzzle.innerHTML = `<p class="text-sm mb-6">Isolate the signal. Translation yields the next fragment.</p><div class="w-full text-left"><p class="log-entry">> Audio signal: <span class="text-red-500">CORRUPTED</span></p><p class="log-entry text-yellow-400">> Playing waveform...</p></div><div class="w-full flex flex-col items-center mt-4"><div class="audio-controls"><button id="playBtn_s2" class="audio-button">PLAY</button><button id="pauseBtn_s2" class="audio-button">PAUSE</button><button id="replayBtn_s2" class="audio-button">REPLAY</button></div><div class="seek-bar-container" id="seekBar_s2"><div class="seek-bar-progress" id="seekProgress_s2"></div></div></div>`;
                 document.getElementById('playBtn_s2').onclick = () => morseAudio.play();
-                document.getElementById('stopBtn_s2').onclick = () => { morseAudio.pause(); morseAudio.currentTime = 0; };
+                document.getElementById('pauseBtn_s2').onclick = () => morseAudio.pause();
+                document.getElementById('replayBtn_s2').onclick = () => { morseAudio.currentTime = 0; morseAudio.play(); };
+                morseAudio.ontimeupdate = () => { const p = (morseAudio.currentTime / morseAudio.duration) * 100; document.getElementById('seekProgress_s2').style.width = `${p}%`; };
+                document.getElementById('seekBar_s2').onclick = (e) => { const rect = e.target.getBoundingClientRect(); const x = e.clientX - rect.left; morseAudio.currentTime = (x / rect.width) * morseAudio.duration; };
             }
-            
             async function setupPhase2() {
-                phase = 2;
-                title.textContent = 'Decryption Complete';
-                input.placeholder = "Enter number of consonants...";
-                input.value = '';
-                puzzle.innerHTML = `
-                    <div id="log1_s2" class="log-entry"></div>
-                    <div id="log2_s2" class="log-entry mt-2 text-yellow-400"></div>`;
-                await typeWriterEffect(document.getElementById('log1_s2'), `> Decoded Word: <span class="text-green-400">BOINK</span>`);
+                phase = 2; title.textContent = 'Decryption Complete'; input.placeholder = "Enter number..."; input.value = '';
+                puzzle.innerHTML = `<div id="log1_s2" class="log-entry"></div><div id="log2_s2" class="log-entry mt-2 text-yellow-400"></div>`;
+                await typeWriterEffect(document.getElementById('log1_s2'), `> Decoded: <span class="text-green-400">BOINK</span>`);
                 await typeWriterEffect(document.getElementById('log2_s2'), `> Task: Count the consonants.`);
             }
-
             async function handleSubmit() {
-                const answer = input.value.trim().toUpperCase();
-                feedback.textContent = '';
-                if (phase === 1) {
-                    if (answer === "BOINK") {
-                        await typeWriterEffect(feedback, '> Transmission decoded.');
-                        await setupPhase2();
-                    } else {
-                        feedback.textContent = '> Error: Signal mismatch.';
-                    }
-                } else if (phase === 2) {
-                    if (answer === "3") {
-                        await typeWriterEffect(feedback, '> Numeric fragment recovered: 3');
-                        gameState.foundDigits.push(3);
-                        setTimeout(() => navigateTo('3'), 1500);
-                    } else {
-                        feedback.textContent = '> Error: Incorrect count.';
-                    }
-                }
+                const answer = input.value.trim().toUpperCase(); feedback.textContent = '';
+                if (phase === 1) { if (answer === "BOINK") { await typeWriterEffect(feedback, '> Decoded.'); await setupPhase2(); } else { feedback.textContent = '> Mismatch.'; } }
+                else if (phase === 2) { if (answer === "3") { await typeWriterEffect(feedback, '> Fragment recovered: 3'); gameState.foundDigits.push(3); setTimeout(() => navigateTo('3'), 1500); } else { feedback.textContent = '> Incorrect.'; } }
             }
-            
-            setupPhase1();
-            document.getElementById('submitBtn_s2').onclick = handleSubmit;
+            setupPhase1(); document.getElementById('submitBtn_s2').onclick = handleSubmit;
         }
         
         // --- SEGMENT 3: FILESYSTEM RECON ---
         function setupSegment_3() {
-            gameContainer.innerHTML = `
-                <div class="segment">
-                    <h1 class="text-2xl font-bold mb-2">Phase 3: Filesystem Recon</h1>
-                    <p id="pathDisplay_s3" class="text-sm mb-4 text-left"></p>
-                    <div id="contentArea_s3" class="content-area" style="text-align:left;"></div>
-                    <div class="mt-auto pt-4 border-t border-gray-700">
-                        <input type="text" id="answerInput_s3" placeholder="Enter the key fragment...">
-                        <button id="submitBtn_s3">Submit</button>
-                        <p id="feedback_s3" class="text-red-500 mt-2 h-4"></p>
-                    </div>
-                </div>`;
-            
-            let currentDirectory = '/';
-            const pathDisplay = document.getElementById('pathDisplay_s3');
-            const contentArea = document.getElementById('contentArea_s3');
-            const input = document.getElementById('answerInput_s3');
-            const feedback = document.getElementById('feedback_s3');
-
-            const filesystem = {
-                '/': ['home', 'var', 'etc'],
-                '/home': ['agent', 'guest'],
-                '/home/agent': ['readme.txt', 'log_alpha.txt', 'notes.bak', 'personal_archive.zip'],
-                '/home/guest': ['photos'],
-                '/var': ['logs'],
-                '/var/logs': ['system.log', 'security.log'],
-                '/etc': ['config.sys']
-            };
-            const contentMap = {
-                '/home/agent/log_alpha.txt': '...\\nSESSION_ID: 8ac4f52\\nKEY_FRAGMENT: 7\\nTransmission complete.',
-                '/home/agent/readme.txt': 'Welcome, agent.',
-                '/home/agent/notes.bak': 'Data fragmented.',
-                '/home/agent/personal_archive.zip': 'File is password protected.',
-                '/home/guest/photos': 'Binary data. Corrupted.',
-                '/var/logs/system.log': 'System initiated.',
-                '/var/logs/security.log': 'No threats found.',
-                '/etc/config.sys': 'Do not modify.',
-            };
-
-            function render() {
-                contentArea.style.opacity = '0';
-                setTimeout(() => {
-                    pathDisplay.textContent = `Current: ${currentDirectory}`;
-                    let html = '';
-                    if (currentDirectory !== '/') {
-                        const parentPath = currentDirectory.split('/').filter(p => p).slice(0, -1).join('/');
-                        html += `<button class="file-item" onclick="window.s3_navigate('/${parentPath}')">../</button>`;
-                    }
-                    const contents = filesystem[currentDirectory.replace(/\/$/, '') || '/'];
-                    if (contents) {
-                        contents.forEach(item => {
-                            const isFolder = !item.includes('.');
-                            const icon = isFolder ? '📁' : '📄';
-                            const path = `${currentDirectory}${item}`;
-                            const action = isFolder ? `window.s3_navigate('${path}/')` : `window.s3_viewFile('${path}')`;
-                            html += `<button class="file-item" onclick="${action}">${icon} ${item}</button>`;
-                        });
-                    }
-                    contentArea.innerHTML = html;
-                    contentArea.style.opacity = '1';
-                }, 300);
-            }
-            
-            window.s3_viewFile = (filePath) => {
-                contentArea.style.opacity = '0';
-                setTimeout(() => {
-                    const content = contentMap[filePath] || 'Access denied.';
-                    contentArea.innerHTML = `
-                        <div class="file-content-view">${content}</div>
-                        <button class="file-item mt-4" onclick="window.s3_render()">[ Close File ]</button>`;
-                    contentArea.style.opacity = '1';
-                    if (content.includes('KEY_FRAGMENT: 7')) {
-                        feedback.className = "text-yellow-400 mt-2 h-4";
-                        feedback.textContent = 'A new clue has been found.';
-                    }
-                }, 300);
-            }
-            
-            window.s3_navigate = (path) => { currentDirectory = path; render(); };
-            window.s3_render = render;
-
-            async function handleSubmit() {
-                if (input.value.trim() === "7") {
-                    await typeWriterEffect(feedback, 'Fragment accepted: 7');
-                    gameState.foundDigits.push(7);
-                    setTimeout(() => navigateTo('4'), 1500);
-                } else {
-                    await typeWriterEffect(feedback, 'Incorrect digit.');
-                }
-            }
-            
-            render();
-            document.getElementById('submitBtn_s3').onclick = handleSubmit;
+            gameContainer.innerHTML = `<div class="segment"><h1 class="text-2xl font-bold mb-2">Phase 3: Filesystem Recon</h1><p id="pathDisplay_s3" class="text-sm mb-4 text-left"></p><div id="contentArea_s3" class="content-area" style="text-align:left;"></div><div class="mt-auto pt-4 border-t border-gray-700"><input type="text" id="answerInput_s3" placeholder="Enter fragment..."><button id="submitBtn_s3">Submit</button><p id="feedback_s3" class="text-red-500 mt-2 h-4"></p></div></div>`;
+            let dir = '/'; const pathD = document.getElementById('pathDisplay_s3'), contentA = document.getElementById('contentArea_s3'), input = document.getElementById('answerInput_s3'), feedback = document.getElementById('feedback_s3');
+            const fs = {'/':['home','var','etc'],'/home':['agent','guest'],'/home/agent':['readme.txt','log_alpha.txt','notes.bak','archive.zip'],'/home/guest':['photos'],'/var':['logs'],'/var/logs':['system.log','security.log'],'/etc':['config.sys']};
+            const map = {'/home/agent/log_alpha.txt':'KEY_FRAGMENT: 7','/home/agent/readme.txt':'Welcome, agent.','/home/agent/notes.bak':'Fragmented.','/home/agent/archive.zip':'Protected.','/home/guest/photos':'Corrupted.','/var/logs/system.log':'OK.','/var/logs/security.log':'No threats.','/etc/config.sys':'Do not modify.'};
+            function render() { contentA.style.opacity='0'; setTimeout(()=>{ pathD.textContent=`Current: ${dir}`; let h=''; if(dir!=='/'){const p=dir.split('/').filter(Boolean).slice(0,-1).join('/'); h+=`<button class="file-item" onclick="window.s3_navigate('/${p}')">../</button>`;} const c=fs[dir.replace(/\/$/,'')||'/']; if(c){c.forEach(i=>{const f=!i.includes('.'),ico=f?'📁':'📄',p=`${dir}${i}`,a=f?`window.s3_navigate('${p}/')`:`window.s3_viewFile('${p}')`; h+=`<button class="file-item" onclick="${a}">${ico} ${i}</button>`;});} contentA.innerHTML=h; contentA.style.opacity='1';},300); }
+            window.s3_viewFile = (p) => { contentA.style.opacity='0'; setTimeout(()=>{const c=map[p]||'Access denied.'; contentA.innerHTML=`<div class="file-content-view">${c}</div><button class="file-item mt-4" onclick="window.s3_render()">[ Close ]</button>`; contentA.style.opacity='1'; if(c.includes('KEY_FRAGMENT: 7')){feedback.className="text-yellow-400 mt-2 h-4"; feedback.textContent='Clue found.';}},300); }
+            window.s3_navigate = (p) => { dir=p; render(); }; window.s3_render = render;
+            async function handleSubmit() { if(input.value.trim()==="7"){await typeWriterEffect(feedback,'Fragment accepted: 7'); gameState.foundDigits.push(7); setTimeout(()=>navigateTo('4'),1500);}else{await typeWriterEffect(feedback,'Incorrect.');} }
+            render(); document.getElementById('submitBtn_s3').onclick = handleSubmit;
         }
 
         // --- SEGMENT 4: ANOMALY DETECTION ---
         function setupSegment_4() {
-             gameContainer.innerHTML = `
-                <div class="segment">
-                    <h1 class="text-2xl font-bold mb-2">Phase 4: Signal Isolation</h1>
-                    <p id="gameHint_s4" class="text-sm mb-4"></p>
-                    <div id="frequencyDisplay_s4" class="flex justify-around text-sm">
-                        <div>Target: <span class="text-yellow-400">415.0 Hz</span></div>
-                        <div>Scanner: <span id="currentFreq_s4" class="text-green-400">400.0 Hz</span></div>
-                    </div>
-                    <canvas id="monitorCanvas"></canvas>
-                    <div id="tuningControls_s4" class="controls-container">
-                        <button id="tuneDown_s4" class="tune-button">- TUNE</button>
-                        <button id="tuneUp_s4" class="tune-button">+ TUNE</button>
-                    </div>
-                    <div class="mt-auto pt-4 border-t border-gray-700">
-                        <input type="text" id="answerInput_s4" placeholder="Enter the final digit..." disabled>
-                        <button id="submitBtn_s4" disabled>Submit</button>
-                        <p id="feedback_s4" class="text-red-500 mt-2 h-4"></p>
-                    </div>
-                </div>`;
-            
-            let phase = 1;
-            let scannerFrequency = 400.0;
-            const TARGET_FREQUENCY = 415.0;
-            const MAX_FREQ_DIFF = 15.0;
-            const hint = document.getElementById('gameHint_s4');
-            const input = document.getElementById('answerInput_s4');
-            const feedback = document.getElementById('feedback_s4');
-            const currentFreqDisplay = document.getElementById('currentFreq_s4');
-            const tuningControls = document.getElementById('tuningControls_s4');
-            const frequencyDisplay = document.getElementById('frequencyDisplay_s4');
-            const submitBtn = document.getElementById('submitBtn_s4');
-            
-            typeWriterEffect(hint, "Tune the scanner to the target frequency to isolate the signal.");
-
-            function updateFrequency(change) {
-                if (phase !== 1) return;
-                scannerFrequency += change;
-                scannerFrequency = Math.max(TARGET_FREQUENCY - MAX_FREQ_DIFF, Math.min(TARGET_FREQUENCY + MAX_FREQ_DIFF, scannerFrequency));
-                currentFreqDisplay.textContent = `${scannerFrequency.toFixed(1)} Hz`;
-                if (Math.abs(scannerFrequency - TARGET_FREQUENCY) < 0.1) {
-                    lockSignal();
-                }
-            }
-
-            async function lockSignal() {
-                phase = 2;
-                await typeWriterEffect(hint, '> Signal locked. Count the major amplitude spikes in one cycle.');
-                tuningControls.style.display = 'none';
-                frequencyDisplay.style.display = 'none';
-                input.disabled = false;
-                submitBtn.disabled = false;
-                await typeWriterEffect(feedback, 'Payload analysis mode engaged.');
-            }
-
-            async function handleSubmit() {
-                if (input.value.trim() === "5") {
-                    await typeWriterEffect(feedback, `> Analysis complete. Digit '5' logged.`);
-                    gameState.foundDigits.push(5);
-                    setTimeout(() => navigateTo('5'), 1500);
-                } else {
-                    await typeWriterEffect(feedback, '> Incorrect analysis.');
-                }
-            }
-
-            document.getElementById('tuneUp_s4').onclick = () => updateFrequency(0.5);
-            document.getElementById('tuneDown_s4').onclick = () => updateFrequency(-0.5);
-            submitBtn.onclick = handleSubmit;
-
-            // Canvas animation logic
-            const canvas = document.getElementById('monitorCanvas');
-            const ctx = canvas.getContext('2d');
-            const dpr = window.devicePixelRatio || 1;
-            const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width * dpr;
-            canvas.height = rect.height * dpr;
-            ctx.scale(dpr, dpr);
-            const width = canvas.width / dpr;
-            const height = canvas.height / dpr;
-            let time = 0;
-            const signals = [
-                { freq: 2, phase: 0.5, baseNoise: 0.1, color: '#047857' },
-                { freq: 3, phase: 1.5, baseNoise: 0.15, color: '#059669' },
-                { freq: 1.5, phase: 0, baseNoise: 1.0, color: '#facc15' }
-            ];
-            function animate() {
-                if (gameState.currentSegment !== '4') return; // Stop animation if not on this segment
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                time += 0.02;
-                if (phase === 1) {
-                    const proximityFactor = Math.min(1, Math.abs(scannerFrequency - TARGET_FREQUENCY) / MAX_FREQ_DIFF);
-                    signals.forEach((signal, index) => {
-                        const isTarget = index === 2;
-                        ctx.beginPath();
-                        ctx.strokeStyle = signal.color;
-                        let noiseLevel, amplitude, lineWidth;
-                        if (isTarget) {
-                            noiseLevel = signal.baseNoise * proximityFactor;
-                            amplitude = height / 4 * (1 - proximityFactor * 0.7);
-                            lineWidth = 1 + (1 - proximityFactor) * 1.5;
-                        } else {
-                            noiseLevel = signal.baseNoise + (1 - proximityFactor) * 0.8;
-                            amplitude = height / 5;
-                            lineWidth = 1;
-                        }
-                        ctx.lineWidth = lineWidth;
-                        for (let x = 0; x < width; x++) {
-                            const angle = (x / width) * Math.PI * 2 * signal.freq + time + signal.phase;
-                            const y = height / 2 + Math.sin(angle) * amplitude + (Math.random() - 0.5) * height * noiseLevel * 0.5;
-                            if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-                        }
-                        ctx.stroke();
-                    });
-                } else {
-                    const spikeCount = 5;
-                    const cycleProgress = (Date.now() % 2000) / 2000;
-                    ctx.strokeStyle = 'rgba(74, 222, 128, 0.3)';
-                    ctx.lineWidth = 1;
-                    ctx.beginPath(); ctx.moveTo(0, height / 2); ctx.lineTo(width, height / 2); ctx.stroke();
-                    ctx.strokeStyle = '#facc15';
-                    ctx.lineWidth = 3;
-                    for (let i = 0; i < spikeCount; i++) {
-                        const spikePosition = (i + 1) / (spikeCount + 1);
-                        const timeUntilSpike = spikePosition - cycleProgress;
-                        let spikeHeight = 0;
-                        if (timeUntilSpike > -0.05 && timeUntilSpike < 0.05) {
-                             spikeHeight = (0.05 - Math.abs(timeUntilSpike)) / 0.05;
-                        }
-                        if (spikeHeight > 0) {
-                            ctx.beginPath();
-                            const x = spikePosition * width;
-                            const yTop = height / 2 - (height / 3) * spikeHeight;
-                            ctx.moveTo(x, height / 2); ctx.lineTo(x, yTop); ctx.stroke();
-                        }
-                    }
-                }
+             gameContainer.innerHTML = `<div class="segment"><h1 class="text-2xl font-bold mb-2">Phase 4: Signal Isolation</h1><p id="gameHint_s4" class="text-sm mb-4"></p><div id="frequencyDisplay_s4" class="flex justify-around text-sm"><div>Target: <span class="text-yellow-400">415.0 Hz</span></div><div>Scanner: <span id="currentFreq_s4">390.0 Hz</span></div></div><canvas id="monitorCanvas"></canvas><div id="tuningControls_s4" class="controls-container"><button id="tuneDown_s4" class="tune-button">-</button><button id="tuneUp_s4" class="tune-button">+</button><button id="amplifyBtn_s4" class="tune-button amplify-button">AMPLIFY</button></div><div class="mt-auto pt-4 border-t border-gray-700"><input type="text" id="answerInput_s4" placeholder="Enter digit..." disabled><button id="submitBtn_s4" disabled>Submit</button><p id="feedback_s4" class="text-red-500 mt-2 h-4"></p></div></div>`;
+            let phase = 1, freq = 390.0; const TARGET = 415.0, MAX_DIFF = 25.0, hint = document.getElementById('gameHint_s4'), input = document.getElementById('answerInput_s4'), feedback = document.getElementById('feedback_s4'), freqDisp = document.getElementById('currentFreq_s4'), tuneCtrl = document.getElementById('tuningControls_s4'), freqDispBox = document.getElementById('frequencyDisplay_s4'), submitBtn = document.getElementById('submitBtn_s4');
+            typeWriterEffect(hint, "Tune scanner to target frequency.");
+            function updateFreq(c) { if (phase!==1) return; freq+=c; freqDisp.textContent=`${freq.toFixed(1)} Hz`; }
+            async function amplify() { if (Math.abs(freq - TARGET) < 0.1) { phase = 2; await typeWriterEffect(hint, '> Signal locked. Count major amplitude spikes.'); tuneCtrl.style.display='none'; freqDispBox.style.display='none'; input.disabled=false; submitBtn.disabled=false; await typeWriterEffect(feedback, 'Payload analysis engaged.'); } else { await typeWriterEffect(feedback, '> Signal too weak to amplify.'); } }
+            async function handleSubmit() { if (input.value.trim()==="5") { await typeWriterEffect(feedback,`> Digit logged: 5`); gameState.foundDigits.push(5); setTimeout(()=>navigateTo('5'),1500); } else { await typeWriterEffect(feedback,'> Incorrect analysis.'); } }
+            document.getElementById('tuneUp_s4').onclick=()=>updateFreq(0.5); document.getElementById('tuneDown_s4').onclick=()=>updateFreq(-0.5); document.getElementById('amplifyBtn_s4').onclick=amplify; submitBtn.onclick=handleSubmit;
+            const canvas = document.getElementById('monitorCanvas'), ctx = canvas.getContext('2d'), dpr = window.devicePixelRatio||1, rect = canvas.getBoundingClientRect(); canvas.width=rect.width*dpr; canvas.height=rect.height*dpr; ctx.scale(dpr,dpr); const width=canvas.width/dpr, height=canvas.height/dpr; let time=0;
+            const signals = [{f:2,p:0.5,n:0.1,c:'#047857'},{f:3,p:1.5,n:0.15,c:'#059669'},{f:1.5,p:0,n:1.0,c:'#facc15'}];
+            const spikePattern = [0.4, 1.0, 0.3, 1.0, 0.4, 1.0, 0.2, 1.0, 0.4, 1.0]; let patternIndex=0, lastPatternUpdate=0;
+            function animate() { if(gameState.currentSegment!=='4')return; ctx.clearRect(0,0,canvas.width,canvas.height); time+=0.02;
+                if(phase===1){ const prox=Math.min(1,Math.abs(freq-TARGET)/MAX_DIFF); signals.forEach((s,i)=>{ const isT=i===2; ctx.beginPath(); ctx.strokeStyle=s.c; let noise,amp,lw; if(isT){noise=s.n*prox; amp=height/4*(1-prox*0.7); lw=1+(1-prox)*1.5;}else{noise=s.n+(1-prox)*0.8; amp=height/5; lw=1;} ctx.lineWidth=lw; for(let x=0;x<width;x++){ const a=(x/width)*Math.PI*2*s.f+time+s.p, y=height/2+Math.sin(a)*amp+(Math.random()-0.5)*height*noise*0.5; if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);} ctx.stroke();});
+                }else{ if(Date.now()-lastPatternUpdate>200){patternIndex=(patternIndex+1)%spikePattern.length; lastPatternUpdate=Date.now();} ctx.strokeStyle='rgba(74,222,128,0.3)'; ctx.lineWidth=1; ctx.beginPath();ctx.moveTo(0,height/2);ctx.lineTo(width,height/2);ctx.stroke(); for(let i=0;i<spikePattern.length;i++){ const val=spikePattern[(patternIndex+i)%spikePattern.length], isMajor=val===1.0, spikeHeight=isMajor?height/2.5:height/5*val; const x=(i/spikePattern.length)*width; if(val>0.1){ctx.beginPath();ctx.strokeStyle=isMajor?'#facc15':'#4ade80'; ctx.lineWidth=isMajor?3:1; ctx.moveTo(x,height/2);ctx.lineTo(x,height/2-spikeHeight);ctx.stroke();}}}
                 requestAnimationFrame(animate);
             }
             animate();
@@ -605,51 +280,15 @@
 
         // --- SEGMENT 5: FINAL SEQUENCE ---
         function setupSegment_5() {
-            gameContainer.innerHTML = `
-                <div class="segment">
-                    <div class="content-area">
-                        <h1 class="text-2xl font-bold mb-2">Phase 5: Final Sequence</h1>
-                        <p class="text-sm mb-4">All fragments recovered. Decrypt the final protocol.</p>
-                        <p class="text-sm">RECOVERED DIGITS:</p>
-                        <div class="digits-display">${gameState.foundDigits.join(' ')}</div>
-                        <div class="log-entry" style="background-color:#111827; border-left: 3px solid #facc15; padding: 1rem; margin-top: 1.5rem;">
-                            &gt; FINAL DECRYPTION KEY<br>
-                            &gt; 1. The digit '9' is in the third position.<br>
-                            &gt; 2. The final digit is the smallest of the four.<br>
-                            &gt; 3. The first digit is the largest prime number available.
-                        </div>
-                    </div>
-                    <div class="mt-auto pt-4 border-t border-gray-700">
-                        <input type="text" id="answerInput_s5" maxlength="4" placeholder="_ _ _ _">
-                        <button id="submitBtn_s5">UNLOCK</button>
-                        <p id="feedback_s5" class="text-red-500 mt-2 h-4"></p>
-                    </div>
-                </div>`;
-            
-            const input = document.getElementById('answerInput_s5');
-            const feedback = document.getElementById('feedback_s5');
-            
-            async function handleSubmit() {
-                if (input.value.trim() === "7593") {
-                    await typeWriterEffect(feedback, '> SEQUENCE ACCEPTED. UNLOCKING...');
-                    setTimeout(() => navigateTo('success'), 1500);
-                } else {
-                    feedback.textContent = '> ACCESS DENIED: INVALID SEQUENCE';
-                }
-            }
+            gameContainer.innerHTML = `<div class="segment"><div class="content-area"><h1 class="text-2xl font-bold mb-2">Phase 5: Final Sequence</h1><p class="text-sm mb-4">All fragments recovered. Decrypt the final protocol.</p><p class="text-sm">RECOVERED DIGITS:</p><div class="digits-display">${gameState.foundDigits.join(' ')}</div><div class="log-entry" style="background-color:#111827;border-left:3px solid #facc15;padding:1rem;margin-top:1.5rem;">&gt; FINAL DECRYPTION KEY<br>&gt; 1. The digit '9' is in the third position.<br>&gt; 2. The final digit is the smallest of the four.<br>&gt; 3. The first digit is the largest prime number available.</div></div><div class="mt-auto pt-4 border-t border-gray-700"><input type="text" id="answerInput_s5" maxlength="4" placeholder="_ _ _ _"><button id="submitBtn_s5">UNLOCK</button><p id="feedback_s5" class="text-red-500 mt-2 h-4"></p></div></div>`;
+            const input = document.getElementById('answerInput_s5'), feedback = document.getElementById('feedback_s5');
+            async function handleSubmit() { if(input.value.trim()==="7593"){await typeWriterEffect(feedback,'> SEQUENCE ACCEPTED.');setTimeout(()=>navigateTo('success'),1500);}else{feedback.textContent='> ACCESS DENIED.';}}
             document.getElementById('submitBtn_s5').onclick = handleSubmit;
         }
 
         // --- SEGMENT: SUCCESS ---
         function setupSegment_success() {
-            gameContainer.innerHTML = `
-                <div class="segment" style="justify-content:center; align-items:center;">
-                     <h1 class="text-4xl font-bold text-yellow-400 mb-4" style="text-shadow: 0 0 10px #facc15;">ACCESS GRANTED</h1>
-                     <p>Final code for physical lock:</p>
-                     <div class="final-code">7593</div>
-                     <p class="text-sm mt-2">Congratulations, Agent.</p>
-                     <button id="restartBtn" class="mt-8">Play Again</button>
-                </div>`;
+            gameContainer.innerHTML = `<div class="segment" style="justify-content:center;align-items:center;"><h1 class="text-4xl font-bold text-yellow-400 mb-4" style="text-shadow:0 0 10px #facc15;">ACCESS GRANTED</h1><p>Final code for physical lock:</p><div class="final-code">7593</div><p class="text-sm mt-2">Congratulations, Agent.</p><p class="text-xs text-gray-500 mt-6">You may now close this window.</p><button id="restartBtn" class="mt-8">Play Again</button></div>`;
             document.getElementById('restartBtn').onclick = () => navigateTo('intro');
         }
 
