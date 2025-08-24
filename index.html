@@ -69,10 +69,21 @@
             transition: background-color 0.2s, transform 0.1s; border: none;
         }
         button:hover { background-color: #22c55e; transform: translateY(-1px); }
+        
+        /* --- FULLSCREEN BUTTON FIX --- */
         #fullscreenBtn {
-            position: absolute; top: 20px; right: 20px; width: 30px; height: 30px;
-            cursor: pointer; z-index: 20; background: none; border: none; padding: 0;
+            position: absolute; 
+            top: 16px; 
+            right: 16px; 
+            width: 24px; /* Made smaller */
+            height: 24px; /* Made smaller */
+            cursor: pointer; 
+            z-index: 20; 
+            background: none; 
+            border: none; 
+            padding: 0;
         }
+
         /* Segment-specific styles */
         #scatteredLettersContainer { min-height: 200px; width:100%; position:relative; }
         .scattered-letter { position: absolute; font-size: 2.5rem; font-weight: bold; pointer-events: none; }
