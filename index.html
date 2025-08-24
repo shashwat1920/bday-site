@@ -91,8 +91,13 @@
         .log-entry { font-size: 0.9rem; text-align: left; margin-bottom: 0.5rem; width:100%; }
         .audio-controls { display: flex; gap: 1rem; margin-top: 1rem; justify-content: center; }
         .audio-button { padding: 0.75rem 1.5rem; font-size: 1rem; background-color: #374151; color: #e5e7eb; }
-        .seek-bar-container { width: 80%; max-width: 300px; height: 8px; background-color: #374151; border-radius: 4px; margin-top: 1rem; cursor: pointer; }
-        .seek-bar-progress { width: 0%; height: 100%; background-color: #4ade80; border-radius: 4px; }
+        
+        /* --- DRAGGABLE SEEK BAR STYLES --- */
+        .seek-bar-container { position: relative; width: 80%; max-width: 300px; height: 8px; background-color: #374151; border-radius: 4px; margin-top: 1.5rem; cursor: pointer; }
+        .seek-bar-progress { height: 100%; background-color: #4ade80; border-radius: 4px; }
+        .seek-bar-handle { position: absolute; top: 50%; width: 16px; height: 16px; background-color: #e5e7eb; border-radius: 50%; transform: translate(-50%, -50%); cursor: grab; }
+        .seek-bar-handle:active { cursor: grabbing; }
+
         .file-item { display: block; width: 100%; text-align: left; padding: 0.5rem 0.25rem; background-color: transparent; color: #4ade80; border: none; cursor: pointer; }
         .file-item:hover { background-color: rgba(74, 222, 128, 0.1); }
         .file-content-view { white-space: pre-wrap; word-wrap: break-word; font-size: 0.9rem; text-align: left; background-color: #111827; padding: 1rem; border-radius: 0.5rem; }
@@ -223,14 +228,46 @@
             gameContainer.innerHTML = `<div class="segment"><h1 id="gameTitle_s2" class="text-2xl font-bold mb-4">Phase 2: Signal Recovery</h1><div id="puzzleContainer_s2" class="content-area"></div><div class="w-full flex flex-col items-center mt-auto pt-4 border-t border-gray-700"><input type="text" id="answerInput_s2" placeholder="Enter decrypted word..."><button id="submitBtn_s2">Submit</button><p id="feedback_s2" class="text-red-500 mt-2 h-4"></p></div></div>`;
             let phase = 1;
             const title = document.getElementById('gameTitle_s2'), puzzle = document.getElementById('puzzleContainer_s2'), input = document.getElementById('answerInput_s2'), feedback = document.getElementById('feedback_s2'), morseAudio = document.getElementById('morseAudio');
+            
             function setupPhase1() {
-                puzzle.innerHTML = `<p class="text-sm mb-6">Isolate the signal. Translation yields the next fragment.</p><div class="w-full text-left"><p class="log-entry">> Audio signal: <span class="text-red-500">CORRUPTED</span></p><p class="log-entry text-yellow-400">> Playing waveform...</p></div><div class="w-full flex flex-col items-center mt-4"><div class="audio-controls"><button id="playBtn_s2" class="audio-button">PLAY</button><button id="pauseBtn_s2" class="audio-button">PAUSE</button><button id="replayBtn_s2" class="audio-button">REPLAY</button></div><div class="seek-bar-container" id="seekBar_s2"><div class="seek-bar-progress" id="seekProgress_s2"></div></div></div>`;
+                puzzle.innerHTML = `<p class="text-sm mb-6">Isolate the signal. Translation yields the next fragment.</p><div class="w-full text-left"><p class="log-entry">> Audio signal: <span class="text-red-500">CORRUPTED</span></p><p class="log-entry text-yellow-400">> Playing waveform...</p></div><div class="w-full flex flex-col items-center mt-4"><div class="audio-controls"><button id="playBtn_s2" class="audio-button">PLAY</button><button id="pauseBtn_s2" class="audio-button">PAUSE</button><button id="replayBtn_s2" class="audio-button">REPLAY</button></div><div class="seek-bar-container" id="seekBarContainer_s2"><div class="seek-bar-progress" id="seekProgress_s2"></div><div class="seek-bar-handle" id="seekHandle_s2"></div></div></div>`;
+                
+                // --- Draggable Seek Bar Logic ---
+                const seekBar = document.getElementById('seekBarContainer_s2');
+                const progress = document.getElementById('seekProgress_s2');
+                const handle = document.getElementById('seekHandle_s2');
+                let isDragging = false;
+
+                function updateProgress() {
+                    if (!morseAudio.duration || isDragging) return;
+                    const percent = (morseAudio.currentTime / morseAudio.duration) * 100;
+                    progress.style.width = `${percent}%`;
+                    handle.style.left = `${percent}%`;
+                }
+
+                function seek(event) {
+                    if (!morseAudio.duration) return;
+                    const rect = seekBar.getBoundingClientRect();
+                    const clientX = event.clientX || (event.touches && event.touches[0].clientX);
+                    const percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+                    morseAudio.currentTime = percent * morseAudio.duration;
+                    updateProgress();
+                }
+
+                handle.addEventListener('mousedown', () => isDragging = true);
+                handle.addEventListener('touchstart', () => isDragging = true);
+                window.addEventListener('mouseup', () => isDragging = false);
+                window.addEventListener('touchend', () => isDragging = false);
+                window.addEventListener('mousemove', e => { if (isDragging) seek(e); });
+                window.addEventListener('touchmove', e => { if (isDragging) seek(e); });
+                seekBar.addEventListener('click', seek);
+                morseAudio.addEventListener('timeupdate', updateProgress);
+
                 document.getElementById('playBtn_s2').onclick = () => morseAudio.play();
                 document.getElementById('pauseBtn_s2').onclick = () => morseAudio.pause();
                 document.getElementById('replayBtn_s2').onclick = () => { morseAudio.currentTime = 0; morseAudio.play(); };
-                morseAudio.ontimeupdate = () => { if (!morseAudio.duration) return; const p = (morseAudio.currentTime / morseAudio.duration) * 100; document.getElementById('seekProgress_s2').style.width = `${p}%`; };
-                document.getElementById('seekBar_s2').onclick = (e) => { if (!morseAudio.duration) return; const rect = e.target.getBoundingClientRect(); const x = e.clientX - rect.left; morseAudio.currentTime = (x / rect.width) * morseAudio.duration; };
             }
+
             async function setupPhase2() {
                 phase = 2; title.textContent = 'Decryption Complete'; input.placeholder = "Enter number..."; input.value = '';
                 puzzle.innerHTML = `<div id="log1_s2" class="log-entry"></div><div id="log2_s2" class="log-entry mt-2 text-yellow-400"></div>`;
